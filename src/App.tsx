@@ -1,0 +1,249 @@
+import { useState, useMemo } from "react";
+import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download } from "lucide-react";
+import logoSvg from "@/assets/logo.svg";
+
+import { KPICards }       from "@/components/dashboard/KPICards";
+import { FunnelChart }    from "@/components/dashboard/FunnelChart";
+import { TrendChart }     from "@/components/dashboard/TrendChart";
+import { StoreRanking }   from "@/components/dashboard/StoreRanking";
+import { StoreFilter }    from "@/components/dashboard/StoreFilter";
+import { StageTimeChart } from "@/components/dashboard/StageTimeChart";
+import { AlertsPanel }    from "@/components/dashboard/AlertsPanel";
+import { StoresPage }     from "@/components/stores/StoresPage";
+import { UsersPage }      from "@/components/users/UsersPage";
+import { LoginPage }      from "@/components/auth/LoginPage";
+import { useAuth }        from "@/contexts/AuthContext";
+import { useDashboard }   from "@/hooks/useDashboard";
+import { PERIOD_LABELS, STORES } from "@/lib/constants";
+import { generateAlerts } from "@/lib/alerts";
+import { exportDashboardPDF } from "@/lib/export-pdf";
+import type { Period }    from "@/lib/types";
+
+const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
+type Page = "dashboard" | "stores" | "users";
+
+export default function App() {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <LoginPage />;
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
+  const { user, isAdmin, allowedStoreIds, logout } = useAuth();
+
+  const [page,          setPage]          = useState<Page>("dashboard");
+  const [userMenuOpen,  setUserMenuOpen]  = useState(false);
+  const [selectedStores, setSelectedStores] = useState<string[]>(() =>
+    isAdmin ? [] : allowedStoreIds
+  );
+  const [period, setPeriod] = useState<Period>("30d");
+
+  function handleStoreChange(ids: string[]) {
+    if (isAdmin) {
+      setSelectedStores(ids);
+    } else {
+      setSelectedStores(ids.filter((id) => allowedStoreIds.includes(id)));
+    }
+  }
+
+  const filters = useMemo(
+    () => ({ storeIds: selectedStores, period }),
+    [selectedStores, period]
+  );
+
+  const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
+  const alerts = useMemo(() => generateAlerts(funnel, ranking), [funnel, ranking]);
+
+  const criticalCount = alerts.filter((a) => a.severity === "critical").length;
+
+  // Label legível do filtro de loja para o PDF
+  const storeLabel = selectedStores.length === 0
+    ? "Todas as lojas"
+    : STORES.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
+
+  function handleExportPDF() {
+    exportDashboardPDF({
+      period: PERIOD_LABELS[period],
+      storeLabel,
+      kpis,
+      funnel,
+      ranking,
+      trend,
+      alerts,
+    });
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/60 backdrop-blur-lg sticky top-0 z-40">
+        <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
+
+          {/* Logo + Nav */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-[#1a1510] border border-[#f0d488]/20 flex items-center justify-center overflow-hidden">
+                <img src={logoSvg} alt="Logo" className="h-7 w-7 object-contain" />
+              </div>
+              <div>
+                <h1 className="text-base font-bold tracking-tight leading-none">Inteligência Comercial</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">iGUi Piscinas</p>
+              </div>
+            </div>
+
+            <nav className="flex items-center gap-1">
+              <NavTab active={page === "dashboard"} onClick={() => setPage("dashboard")}
+                icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
+                badge={criticalCount > 0 ? criticalCount : undefined}
+              />
+              <NavTab active={page === "stores"} onClick={() => setPage("stores")}
+                icon={<Store className="h-4 w-4" />} label="Lojas" />
+              {isAdmin && (
+                <NavTab active={page === "users"} onClick={() => setPage("users")}
+                  icon={<Users className="h-4 w-4" />} label="Usuários" />
+              )}
+            </nav>
+          </div>
+
+          {/* Direita */}
+          <div className="flex items-center gap-3">
+            {page === "dashboard" && (
+              <>
+                <StoreFilter
+                  selected={selectedStores}
+                  onChange={handleStoreChange}
+                  restrictToIds={isAdmin ? undefined : allowedStoreIds}
+                />
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border">
+                  {PERIODS.map((p) => (
+                    <button key={p} onClick={() => setPeriod(p)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}>
+                      {PERIOD_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+                {/* Exportar PDF */}
+                <button
+                  onClick={handleExportPDF}
+                  title="Exportar relatório PDF"
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Exportar PDF</span>
+                </button>
+              </>
+            )}
+
+            {/* Menu do usuário */}
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary/50 hover:bg-secondary transition-colors"
+              >
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  isAdmin ? "bg-primary text-primary-foreground" : "bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))]"
+                }`}>
+                  {user?.avatarInitials}
+                </div>
+                <span className="text-xs font-medium text-foreground hidden sm:block max-w-[120px] truncate">
+                  {user?.name}
+                </span>
+                {isAdmin && <ShieldCheck className="h-3.5 w-3.5 text-primary hidden sm:block" />}
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border">
+                    <p className="text-sm font-semibold text-foreground">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <span className={`inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      isAdmin ? "bg-primary/15 text-primary" : "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
+                    }`}>
+                      {isAdmin ? <><ShieldCheck className="h-2.5 w-2.5" /> Administrador</> : "Fabricante"}
+                    </span>
+                  </div>
+                  {!isAdmin && (
+                    <div className="px-4 py-2 border-b border-border">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Suas lojas</p>
+                      <p className="text-xs text-foreground">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""} na sua jurisdição</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setUserMenuOpen(false); logout(); }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-[hsl(var(--danger))] hover:bg-[hsl(var(--danger)/0.06)] transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" /> Sair
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Conteúdo */}
+      <main className="max-w-[1600px] mx-auto px-6 py-6">
+        {page === "dashboard" ? (
+          <div className="space-y-6">
+            {!isAdmin && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
+                <Store className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-muted-foreground">
+                  Visualizando dados de{" "}
+                  <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
+                  sob sua responsabilidade.
+                </span>
+              </div>
+            )}
+
+            {/* Alertas */}
+            <AlertsPanel alerts={alerts} />
+
+            <KPICards data={kpis} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <FunnelChart data={funnel} />
+              <TrendChart  data={trend}  />
+            </div>
+            <StageTimeChart data={stageTimes} />
+            <StoreRanking   data={ranking}    />
+          </div>
+        ) : page === "stores" ? (
+          <StoresPage readOnly={!isAdmin} />
+        ) : (
+          <UsersPage />
+        )}
+      </main>
+
+      {userMenuOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+function NavTab({ active, onClick, icon, label, badge }: {
+  active:  boolean;
+  onClick: () => void;
+  icon:    React.ReactNode;
+  label:   string;
+  badge?:  number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      }`}
+    >
+      {icon}{label}
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[hsl(var(--danger))] text-white text-[9px] font-bold flex items-center justify-center">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}

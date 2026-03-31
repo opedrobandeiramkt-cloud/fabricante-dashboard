@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenants (fabricantes clientes do SaaS) ───────────────────────────────────
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  stores       Store[]
+  funnelStages FunnelStage[]
+  leads        Lead[]
+  leadEvents   LeadEvent[]
+
+  @@map("tenants")
+}
+
+// ─── Lojas ────────────────────────────────────────────────────────────────────
+model Store {
+  id         String  @id @default(uuid())
+  tenantId   String  @map("tenant_id")
+  name       String
+  city       String?
+  state      String?
+  externalId String? @map("external_id")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  leads      Lead[]
+  leadEvents LeadEvent[]
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId])
+  @@map("stores")
+}
+
+// ─── Etapas do funil ──────────────────────────────────────────────────────────
+model FunnelStage {
+  id         String  @id @default(uuid())
+  tenantId   String  @map("tenant_id")
+  key        String
+  label      String
+  orderIndex Int     @map("order_index")
+  isWon      Boolean @default(false) @map("is_won")
+  isLost     Boolean @default(false) @map("is_lost")
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  leadsAsCurrent  Lead[]      @relation("CurrentStage")
+  eventsFromStage LeadEvent[] @relation("FromStage")
+  eventsToStage   LeadEvent[] @relation("ToStage")
+
+  @@unique([tenantId, key])
+  @@unique([tenantId, orderIndex])
+  @@map("funnel_stages")
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+model Lead {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  storeId        String    @map("store_id")
+  externalId     String    @map("external_id")
+  currentStageId String?   @map("current_stage_id")
+  enteredAt      DateTime  @map("entered_at")
+  closedAt       DateTime? @map("closed_at")
+  metadata       Json      @default("{}")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  store        Store        @relation(fields: [storeId], references: [id])
+  currentStage FunnelStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
+  events       LeadEvent[]
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, currentStageId])
+  @@map("leads")
+}
+
+// ─── Eventos de transição (event sourcing) ────────────────────────────────────
+model LeadEvent {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  storeId        String   @map("store_id")
+  leadId         String   @map("lead_id")
+  fromStageId    String?  @map("from_stage_id")
+  toStageId      String   @map("to_stage_id")
+  occurredAt     DateTime @map("occurred_at")
+  receivedAt     DateTime @default(now()) @map("received_at")
+  idempotencyKey String   @unique @map("idempotency_key")
+  rawPayload     Json?    @map("raw_payload")
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  store     Store        @relation(fields: [storeId], references: [id])
+  lead      Lead         @relation(fields: [leadId], references: [id])
+  fromStage FunnelStage? @relation("FromStage", fields: [fromStageId], references: [id])
+  toStage   FunnelStage  @relation("ToStage",   fields: [toStageId],   references: [id])
+
+  @@index([tenantId, storeId, occurredAt(sort: Desc)])
+  @@index([tenantId, toStageId, occurredAt(sort: Desc)])
+  @@index([leadId, occurredAt(sort: Desc)])
+  @@map("lead_events")
+}
+
+// ─── Eventos com falha na ingestão (reprocessamento) ─────────────────────────
+model FailedEvent {
+  id         String   @id @default(uuid())
+  receivedAt DateTime @default(now()) @map("received_at")
+  payload    Json
+  error      String
+  source     String   @default("webhook")
+  resolved   Boolean  @default(false)
+
+  @@index([resolved, receivedAt(sort: Desc)])
+  @@map("failed_events")
+}

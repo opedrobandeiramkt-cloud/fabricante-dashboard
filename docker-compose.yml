@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: igui_postgres
+    environment:
+      POSTGRES_USER:     igui
+      POSTGRES_PASSWORD: igui123
+      POSTGRES_DB:       igui_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U igui -d igui_dashboard"]
+      interval: 5s
+      timeout:  5s
+      retries:  5
+
+volumes:
+  pgdata:
