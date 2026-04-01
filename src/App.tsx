@@ -199,30 +199,36 @@ function AuthenticatedApp() {
 
         {/* Barra de filtros mobile — apenas no dashboard */}
         {page === "dashboard" && (
-          <div className="md:hidden border-t border-border px-4 py-2 flex items-center gap-2 overflow-x-auto">
-            <StoreFilter
-              selected={selectedStores}
-              onChange={handleStoreChange}
-              restrictToIds={isAdmin ? undefined : allowedStoreIds}
-            />
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border flex-shrink-0">
-              {PERIODS.map((p) => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                    period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}>
-                  {PERIOD_LABELS[p]}
-                </button>
-              ))}
+          <div className="md:hidden border-t border-border flex flex-col">
+            {/* Linha 1: StoreFilter — sem overflow para o dropdown funcionar */}
+            <div className="px-4 pt-2 pb-1">
+              <StoreFilter
+                selected={selectedStores}
+                onChange={handleStoreChange}
+                restrictToIds={isAdmin ? undefined : allowedStoreIds}
+              />
             </div>
-            <button
-              onClick={handleExportPDF}
-              title="Exportar PDF"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-            >
-              <Download className="h-3.5 w-3.5" />
-              PDF
-            </button>
+            {/* Linha 2: período + PDF — pode ter scroll horizontal */}
+            <div className="px-4 pb-2 flex items-center gap-2 overflow-x-auto">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border flex-shrink-0">
+                {PERIODS.map((p) => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                      period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}>
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleExportPDF}
+                title="Exportar PDF"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              >
+                <Download className="h-3.5 w-3.5" />
+                PDF
+              </button>
+            </div>
           </div>
         )}
 
