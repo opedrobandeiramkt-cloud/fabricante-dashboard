@@ -32,7 +32,7 @@ export function UsersPage() {
     <div className="space-y-6">
 
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">Gerenciar Usuários</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -45,7 +45,7 @@ export function UsersPage() {
         </div>
         <button
           onClick={() => setModalUser("new")}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
           Novo Usuário
@@ -53,7 +53,7 @@ export function UsersPage() {
       </div>
 
       {/* Busca */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
@@ -65,14 +65,14 @@ export function UsersPage() {
       </div>
 
       {/* Tabela */}
-      <div className="card-base overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card-base overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
             <tr className="border-b border-border bg-secondary/30">
-              <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Usuário</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Perfil</th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Lojas</th>
-              <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Ações</th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 sm:px-5 py-3">Usuário</th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 sm:px-5 py-3 hidden sm:table-cell">Perfil</th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 sm:px-5 py-3 hidden md:table-cell">Lojas</th>
+              <th className="text-right text-xs font-medium text-muted-foreground px-4 sm:px-5 py-3">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -85,7 +85,7 @@ export function UsersPage() {
               return (
                 <tr key={u.id} className={`hover:bg-secondary/20 transition-colors ${isSelf ? "bg-[hsl(var(--primary)/0.04)]" : ""}`}>
                   {/* Usuário */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 sm:px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                         u.role === "admin"
@@ -94,20 +94,20 @@ export function UsersPage() {
                       }`}>
                         {u.avatarInitials}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground">{u.name}</p>
+                          <p className="font-medium text-foreground truncate">{u.name}</p>
                           {isSelf && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">você</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium flex-shrink-0">você</span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                       </div>
                     </div>
                   </td>
 
                   {/* Perfil */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 sm:px-5 py-3.5 hidden sm:table-cell">
                     {u.role === "admin" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
                         <ShieldCheck className="h-3 w-3" /> Administrador
@@ -120,7 +120,7 @@ export function UsersPage() {
                   </td>
 
                   {/* Lojas */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 sm:px-5 py-3.5 hidden md:table-cell">
                     {u.role === "admin" ? (
                       <span className="text-xs text-muted-foreground">Todas as lojas</span>
                     ) : storeNames ? (
@@ -137,7 +137,7 @@ export function UsersPage() {
                   </td>
 
                   {/* Ações */}
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-4 sm:px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => setModalUser(u)}
@@ -166,7 +166,7 @@ export function UsersPage() {
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-12 text-center">
+                <td colSpan={4} className="px-4 sm:px-5 py-12 text-center">
                   <UserCircle2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">Nenhum usuário encontrado</p>
                 </td>

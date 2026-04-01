@@ -109,7 +109,7 @@ export function FunnelChart({ data }: FunnelChartProps) {
       </ResponsiveContainer>
 
       {/* Linha de conversão etapa a etapa */}
-      <div className="border-t border-border pt-3 grid grid-cols-4 gap-2">
+      <div className="border-t border-border pt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         {funnelData
           .filter((d) => d.conversionFromPrev !== null)
           .slice(0, 4)

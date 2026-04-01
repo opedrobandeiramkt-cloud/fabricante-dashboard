@@ -93,13 +93,13 @@ export function StoreRanking({ data }: StoreRankingProps) {
             <tr className="border-b border-border">
               <th className="text-left text-xs font-medium text-muted-foreground pb-3 pr-4 w-6">#</th>
               <th className="text-left text-xs font-medium text-muted-foreground pb-3 pr-4">Loja</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Leads</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden sm:table-cell">Leads</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Conversão</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Vendas</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden sm:table-cell">Vendas</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Faturamento</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Ticket Médio</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Ciclo Médio</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3">Tendência</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ticket Médio</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ciclo Médio</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 hidden md:table-cell">Tendência</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -129,25 +129,25 @@ export function StoreRanking({ data }: StoreRankingProps) {
                     {row.store.city} — {row.store.state}
                   </p>
                 </td>
-                <td className="py-3 pr-4 text-right font-medium text-foreground">
+                <td className="py-3 pr-4 text-right font-medium text-foreground hidden sm:table-cell">
                   {row.leads.toLocaleString("pt-BR")}
                 </td>
                 <td className="py-3 pr-4 text-right">
                   <ConvBadge value={row.conversion} />
                 </td>
-                <td className="py-3 pr-4 text-right font-medium text-foreground">
+                <td className="py-3 pr-4 text-right font-medium text-foreground hidden sm:table-cell">
                   {row.wonDeals.toLocaleString("pt-BR")}
                 </td>
                 <td className="py-3 pr-4 text-right font-semibold text-[hsl(var(--success))]">
                   {formatBRL(row.revenue)}
                 </td>
-                <td className="py-3 pr-4 text-right text-muted-foreground">
+                <td className="py-3 pr-4 text-right text-muted-foreground hidden lg:table-cell">
                   {formatBRL(row.avgTicket)}
                 </td>
-                <td className="py-3 pr-4 text-right text-muted-foreground">
+                <td className="py-3 pr-4 text-right text-muted-foreground hidden lg:table-cell">
                   {row.avgCycleDays} dias
                 </td>
-                <td className="py-3 text-right">
+                <td className="py-3 text-right hidden md:table-cell">
                   <div className="flex items-center justify-end gap-1">
                     <TrendIcon values={row.trend} />
                     <Sparkline values={row.trend} />
