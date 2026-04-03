@@ -149,7 +149,7 @@ export async function ingestRoutes(app: FastifyInstance) {
               currentStageId: toStage.id,
               enteredAt:     occurredAt,
               closedAt:      toStage.isWon || toStage.isLost ? occurredAt : null,
-              metadata:      body.metadata ?? {},
+              metadata:      (body.metadata ?? {}) as object,
             },
             update: {
               currentStageId: toStage.id,
