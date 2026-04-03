@@ -1,0 +1,70 @@
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { STORES as DEFAULT_STORES } from "@/lib/constants";
+import type { Store } from "@/lib/types";
+
+const STORAGE_KEY = "igui_stores";
+
+function loadStores(): Store[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as Store[];
+  } catch { /* ignore */ }
+  return DEFAULT_STORES;
+}
+
+function saveStores(stores: Store[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stores));
+}
+
+interface StoresContextValue {
+  stores:       Store[];
+  addStore:     (data: Omit<Store, "id" | "createdAt">) => Store;
+  updateStore:  (id: string, data: Partial<Omit<Store, "id" | "createdAt">>) => void;
+  deleteStore:  (id: string) => void;
+  toggleActive: (id: string) => void;
+}
+
+const StoresContext = createContext<StoresContextValue | null>(null);
+
+export function StoresProvider({ children }: { children: ReactNode }) {
+  const [stores, setStores] = useState<Store[]>(loadStores);
+
+  function persist(updated: Store[]) {
+    setStores(updated);
+    saveStores(updated);
+  }
+
+  function addStore(data: Omit<Store, "id" | "createdAt">): Store {
+    const newStore: Store = {
+      ...data,
+      id:        `loja-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    persist([...stores, newStore]);
+    return newStore;
+  }
+
+  function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>) {
+    persist(stores.map((s) => (s.id === id ? { ...s, ...data } : s)));
+  }
+
+  function deleteStore(id: string) {
+    persist(stores.filter((s) => s.id !== id));
+  }
+
+  function toggleActive(id: string) {
+    persist(stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+  }
+
+  return (
+    <StoresContext.Provider value={{ stores, addStore, updateStore, deleteStore, toggleActive }}>
+      {children}
+    </StoresContext.Provider>
+  );
+}
+
+export function useStores() {
+  const ctx = useContext(StoresContext);
+  if (!ctx) throw new Error("useStores must be used within StoresProvider");
+  return ctx;
+}

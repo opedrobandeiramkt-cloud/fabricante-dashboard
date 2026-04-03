@@ -14,7 +14,8 @@ import { UsersPage }      from "@/components/users/UsersPage";
 import { LoginPage }      from "@/components/auth/LoginPage";
 import { useAuth }        from "@/contexts/AuthContext";
 import { useDashboard }   from "@/hooks/useDashboard";
-import { PERIOD_LABELS, STORES } from "@/lib/constants";
+import { PERIOD_LABELS } from "@/lib/constants";
+import { useStores } from "@/contexts/StoresContext";
 import { generateAlerts } from "@/lib/alerts";
 import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
@@ -30,6 +31,7 @@ export default function App() {
 
 function AuthenticatedApp() {
   const { user, isAdmin, allowedStoreIds, logout } = useAuth();
+  const { stores } = useStores();
 
   const [page,          setPage]          = useState<Page>("dashboard");
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
@@ -64,7 +66,7 @@ function AuthenticatedApp() {
 
   const storeLabel = selectedStores.length === 0
     ? "Todas as lojas"
-    : STORES.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
+    : stores.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
 
   function handleExportPDF() {
     exportDashboardPDF({

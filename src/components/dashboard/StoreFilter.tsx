@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Store, Check, X, Lock } from "lucide-react";
-import { STORES } from "@/lib/constants";
+import { useStores } from "@/contexts/StoresContext";
 
 interface StoreFilterProps {
   selected:       string[];
@@ -12,10 +12,11 @@ interface StoreFilterProps {
 export function StoreFilter({ selected, onChange, restrictToIds }: StoreFilterProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { stores } = useStores();
 
   const visibleStores = restrictToIds
-    ? STORES.filter((s) => restrictToIds.includes(s.id))
-    : STORES;
+    ? stores.filter((s) => restrictToIds.includes(s.id))
+    : stores;
 
   const isRestricted = !!restrictToIds;
 
@@ -47,7 +48,7 @@ export function StoreFilter({ selected, onChange, restrictToIds }: StoreFilterPr
         ? `${visibleStores.length} loja${visibleStores.length !== 1 ? "s" : ""}`
         : "Todas as lojas"
       : selected.length === 1
-      ? STORES.find((s) => s.id === selected[0])?.name ?? "1 loja"
+      ? stores.find((s) => s.id === selected[0])?.name ?? "1 loja"
       : `${selected.length} lojas`;
 
   // Fabricante com 1 loja: sem dropdown, só exibe o nome

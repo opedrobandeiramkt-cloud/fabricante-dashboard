@@ -3,12 +3,13 @@ import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCi
 import { UserFormModal } from "./UserFormModal";
 import { useUsers, type UserFormData } from "@/hooks/useUsers";
 import { useAuth } from "@/contexts/AuthContext";
-import { STORES } from "@/lib/constants";
+import { useStores } from "@/contexts/StoresContext";
 import type { AppUser } from "@/lib/auth-types";
 
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const { users, addUser, updateUser, deleteUser } = useUsers();
+  const { stores } = useStores();
 
   const [search,      setSearch]      = useState("");
   const [modalUser,   setModalUser]   = useState<AppUser | null | "new">(null);
@@ -79,7 +80,7 @@ export function UsersPage() {
             {filtered.map((u) => {
               const isSelf = u.id === currentUser?.id;
               const storeNames = u.storeIds.length > 0
-                ? STORES.filter((s) => u.storeIds.includes(s.id)).map((s) => s.name)
+                ? stores.filter((s) => u.storeIds.includes(s.id)).map((s) => s.name)
                 : null;
 
               return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, UserCircle2, Save, Eye, EyeOff, ShieldCheck, Store } from "lucide-react";
-import { STORES } from "@/lib/constants";
+import { useStores } from "@/contexts/StoresContext";
 import type { AppUser } from "@/lib/auth-types";
 import type { UserFormData } from "@/hooks/useUsers";
 
@@ -18,6 +18,7 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
   const [form,    setForm]    = useState<UserFormData>(EMPTY);
   const [showPwd, setShowPwd] = useState(false);
   const [errors,  setErrors]  = useState<Partial<Record<keyof UserFormData, string>>>({});
+  const { stores } = useStores();
 
   const isNew = !user;
 
@@ -151,7 +152,7 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
             {form.role === "fabricante" && (
               <Field label="Lojas sob responsabilidade" required error={errors.storeIds}>
                 <div className="space-y-2 mt-1">
-                  {STORES.map((store) => {
+                  {stores.map((store) => {
                     const checked = form.storeIds.includes(store.id);
                     return (
                       <button key={store.id} type="button" onClick={() => toggleStore(store.id)}
