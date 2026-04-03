@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight,
-  Store, MapPin, Phone, Mail, Link2, AlertTriangle, Eye,
+  Store, MapPin, Phone, Mail, Link2, AlertTriangle, Eye, Copy, Check,
 } from "lucide-react";
 import { StoreFormModal } from "./StoreFormModal";
 import { useStores } from "@/hooks/useStores";
@@ -240,9 +240,7 @@ function StoreCard({
           </InfoRow>
         )}
         {store.externalId && (
-          <InfoRow icon={<Link2 className="h-3.5 w-3.5" />}>
-            <span className="font-mono text-xs">{store.externalId}</span>
-          </InfoRow>
+          <CopyableId value={store.externalId} />
         )}
       </div>
 
@@ -255,6 +253,35 @@ function StoreCard({
           })}
         </p>
       </div>
+    </div>
+  );
+}
+
+function CopyableId({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-muted-foreground">
+      <span className="flex-shrink-0"><Link2 className="h-3.5 w-3.5" /></span>
+      <span className="font-mono text-xs text-foreground flex-1 truncate">{value}</span>
+      <button
+        onClick={handleCopy}
+        title="Copiar ID para n8n"
+        className={`flex-shrink-0 h-5 w-5 rounded flex items-center justify-center transition-colors ${
+          copied
+            ? "text-[hsl(var(--success))]"
+            : "text-muted-foreground/60 hover:text-foreground"
+        }`}
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
     </div>
   );
 }
