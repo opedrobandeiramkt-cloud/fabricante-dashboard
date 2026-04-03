@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getPeriodRange, getPreviousPeriodRange, type Period } from "../lib/date-ranges.js";
 
@@ -195,10 +196,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
       // Busca todos os eventos do período agrupando por data no SQL via raw
       const bucketSql = period === "12m" ? "month" : period === "90d" ? "week" : "day";
 
+      const bucket = Prisma.raw(bucketSql);
+
       const rows = storeIds.length > 0
         ? await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
             SELECT
-              DATE_TRUNC(${bucketSql}, occurred_at) AS bucket,
+              DATE_TRUNC(${bucket}, occurred_at) AS bucket,
               COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
               COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
             FROM lead_events
@@ -210,7 +213,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
           `
         : await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
             SELECT
-              DATE_TRUNC(${bucketSql}, occurred_at) AS bucket,
+              DATE_TRUNC(${bucket}, occurred_at) AS bucket,
               COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
               COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
             FROM lead_events
