@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCircle2 } from "lucide-react";
 import { UserFormModal } from "./UserFormModal";
-import { useUsers, type UserFormData } from "@/hooks/useUsers";
+import { useUsersContext } from "@/contexts/UsersContext";
+import type { UserFormData } from "@/hooks/useUsers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStores } from "@/contexts/StoresContext";
 import type { AppUser } from "@/lib/auth-types";
 
 export function UsersPage() {
   const { user: currentUser } = useAuth();
-  const { users, addUser, updateUser, deleteUser } = useUsers();
+  const { users, addUser, updateUser, deleteUser } = useUsersContext();
   const { stores } = useStores();
 
   const [search,      setSearch]      = useState("");

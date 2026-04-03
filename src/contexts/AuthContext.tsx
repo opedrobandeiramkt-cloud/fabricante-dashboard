@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { authenticateUser } from "@/lib/mock-users";
+import { useUsersContext } from "@/contexts/UsersContext";
 import type { AppUser } from "@/lib/auth-types";
 
 const STORAGE_KEY = "igui_auth_user";
@@ -17,6 +17,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { authenticateUser } = useUsersContext();
   const [user, setUser] = useState<AppUser | null>(() => {
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
