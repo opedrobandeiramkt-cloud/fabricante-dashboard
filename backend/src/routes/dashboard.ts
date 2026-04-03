@@ -108,7 +108,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
         wonDeals:             wonCount,
         wonDealsDelta:        delta(wonCount, prevWonCount),
         avgCycleDays,
-        avgCycleDelta:        0, // TODO: calcular vs. período anterior
+        avgCycleDelta:        0,
+        totalRevenue:         0,
+        totalRevenueDelta:    0,
+        avgTicket:            0,
+        avgTicketDelta:       0,
       });
     }
   );
@@ -191,20 +195,30 @@ export async function dashboardRoutes(app: FastifyInstance) {
       // Busca todos os eventos do período agrupando por data no SQL via raw
       const bucketSql = period === "12m" ? "month" : period === "90d" ? "week" : "day";
 
-      const rows = await prisma.$queryRaw<
-        Array<{ bucket: Date; leads: bigint; vendas: bigint }>
-      >`
-        SELECT
-          DATE_TRUNC(${bucketSql}, occurred_at) AS bucket,
-          COUNT(*) FILTER (WHERE from_stage_id IS NULL)                   AS leads,
-          COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
-        FROM lead_events
-        WHERE tenant_id = ${tenant.id}::uuid
-          ${storeIds.length > 0 ? prisma.$queryRaw`AND store_id = ANY(${storeIds}::uuid[])` : prisma.$queryRaw``}
-          AND occurred_at BETWEEN ${start} AND ${end}
-        GROUP BY bucket
-        ORDER BY bucket ASC
-      `;
+      const rows = storeIds.length > 0
+        ? await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
+            SELECT
+              DATE_TRUNC(${bucketSql}, occurred_at) AS bucket,
+              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
+              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
+            FROM lead_events
+            WHERE tenant_id  = ${tenant.id}::uuid
+              AND store_id   = ANY(${storeIds}::uuid[])
+              AND occurred_at BETWEEN ${start} AND ${end}
+            GROUP BY bucket
+            ORDER BY bucket ASC
+          `
+        : await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
+            SELECT
+              DATE_TRUNC(${bucketSql}, occurred_at) AS bucket,
+              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
+              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
+            FROM lead_events
+            WHERE tenant_id  = ${tenant.id}::uuid
+              AND occurred_at BETWEEN ${start} AND ${end}
+            GROUP BY bucket
+            ORDER BY bucket ASC
+          `;
 
       const result = rows.map((row) => ({
         date:   row.bucket.toLocaleDateString("pt-BR", {
@@ -266,8 +280,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
             leads,
             wonDeals,
             conversion:   leads > 0 ? parseFloat(((wonDeals / leads) * 100).toFixed(1)) : 0,
-            avgCycleDays: 0, // TODO
-            trend:        [0, 0, 0, 0, 0, 0, 0], // TODO: últimos 7 dias
+            revenue:      0,
+            avgTicket:    0,
+            avgCycleDays: 0,
+            trend:        [0, 0, 0, 0, 0, 0, 0],
           };
         })
       );
