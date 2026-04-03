@@ -8,7 +8,6 @@ import { TrendChart }     from "@/components/dashboard/TrendChart";
 import { StoreRanking }   from "@/components/dashboard/StoreRanking";
 import { StoreFilter }    from "@/components/dashboard/StoreFilter";
 import { StageTimeChart } from "@/components/dashboard/StageTimeChart";
-import { AlertsPanel }    from "@/components/dashboard/AlertsPanel";
 import { StoresPage }     from "@/components/stores/StoresPage";
 import { UsersPage }      from "@/components/users/UsersPage";
 import { LoginPage }      from "@/components/auth/LoginPage";
@@ -16,7 +15,6 @@ import { useAuth }        from "@/contexts/AuthContext";
 import { useDashboard }   from "@/hooks/useDashboard";
 import { PERIOD_LABELS } from "@/lib/constants";
 import { useStores } from "@/contexts/StoresContext";
-import { generateAlerts } from "@/lib/alerts";
 import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
 
@@ -60,9 +58,6 @@ function AuthenticatedApp() {
   );
 
   const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
-  const alerts = useMemo(() => generateAlerts(funnel, ranking), [funnel, ranking]);
-
-  const criticalCount = alerts.filter((a) => a.severity === "critical").length;
 
   const storeLabel = selectedStores.length === 0
     ? "Todas as lojas"
@@ -101,7 +96,6 @@ function AuthenticatedApp() {
           <nav className="hidden md:flex items-center gap-1">
             <NavTab active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
               icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
-              badge={criticalCount > 0 ? criticalCount : undefined}
             />
             <NavTab active={page === "stores"} onClick={() => handlePageChange("stores")}
               icon={<Store className="h-4 w-4" />} label="Lojas" />
@@ -240,7 +234,6 @@ function AuthenticatedApp() {
             <nav className="flex flex-col p-2 gap-1">
               <MobileNavItem active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
                 icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
-                badge={criticalCount > 0 ? criticalCount : undefined}
               />
               <MobileNavItem active={page === "stores"} onClick={() => handlePageChange("stores")}
                 icon={<Store className="h-4 w-4" />} label="Lojas"
@@ -269,8 +262,6 @@ function AuthenticatedApp() {
                 </span>
               </div>
             )}
-
-            <AlertsPanel alerts={alerts} />
 
             <KPICards data={kpis} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
