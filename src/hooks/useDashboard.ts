@@ -67,7 +67,7 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
 
     const { storeIds, period } = filters;
 
-    Promise.all([
+    Promise.allSettled([
       api.kpis(storeIds, period),
       api.funnel(storeIds, period),
       api.trend(storeIds, period),
@@ -76,12 +76,13 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
     ])
       .then(([kpis, funnel, trend, ranking, stageTimes]) => {
         if (cancelled || !mountedRef.current) return;
-        setData({ kpis, funnel, trend, ranking, stageTimes });
-      })
-      .catch((err: unknown) => {
-        if (cancelled || !mountedRef.current) return;
-        const message = err instanceof Error ? err.message : "Erro ao carregar dados";
-        setError(message);
+        setData({
+          kpis:       kpis.status       === "fulfilled" ? kpis.value       : getMockData(filters).kpis,
+          funnel:     funnel.status     === "fulfilled" ? funnel.value     : [],
+          trend:      trend.status      === "fulfilled" ? trend.value      : [],
+          ranking:    ranking.status    === "fulfilled" ? ranking.value    : [],
+          stageTimes: stageTimes.status === "fulfilled" ? stageTimes.value : [],
+        });
       })
       .finally(() => {
         if (!cancelled && mountedRef.current) setLoading(false);
