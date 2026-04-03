@@ -77,7 +77,7 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
       .then(([kpis, funnel, trend, ranking, stageTimes]) => {
         if (cancelled || !mountedRef.current) return;
         setData({
-          kpis:       kpis.status       === "fulfilled" ? kpis.value       : getMockData(filters).kpis,
+          kpis:       kpis.status       === "fulfilled" ? kpis.value       : { totalLeads: 0, totalLeadsDelta: 0, totalConversion: 0, totalConversionDelta: 0, wonDeals: 0, wonDealsDelta: 0, avgCycleDays: 0, avgCycleDelta: 0, totalRevenue: 0, totalRevenueDelta: 0, avgTicket: 0, avgTicketDelta: 0 },
           funnel:     funnel.status     === "fulfilled" ? funnel.value     : [],
           trend:      trend.status      === "fulfilled" ? trend.value      : [],
           ranking:    ranking.status    === "fulfilled" ? ranking.value    : [],

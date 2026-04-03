@@ -29,8 +29,14 @@ export function generateAlerts(
   let seq = 0;
   const id = () => `alert-${++seq}`;
 
+  // Sem dados reais ainda — não gera alertas falsos
+  if (ranking.every((r) => r.leads === 0) && funnel.every((s) => s.count === 0)) {
+    return [];
+  }
+
   // ── 1. Conversão total por loja ────────────────────────────────────────────
   for (const row of ranking) {
+    if (row.leads === 0) continue; // sem dados, não alerta
     if (row.conversion < THRESHOLDS.totalConversionCritical) {
       alerts.push({
         id: id(), severity: "critical",
@@ -79,6 +85,7 @@ export function generateAlerts(
 
   // ── 4. Ciclo médio longo ──────────────────────────────────────────────────
   for (const row of ranking) {
+    if (row.leads === 0) continue; // sem dados, não alerta
     if (row.avgCycleDays > THRESHOLDS.avgCycleCritical) {
       alerts.push({
         id: id(), severity: "critical",
@@ -98,9 +105,10 @@ export function generateAlerts(
     }
   }
 
-  // ── 5. Loja sem leads no período ──────────────────────────────────────────
+  // ── 5. Loja sem leads no período ── apenas se outras lojas têm dados ────────
+  const lojaComDados = ranking.some((r) => r.leads > 0);
   for (const row of ranking) {
-    if (row.leads === 0) {
+    if (lojaComDados && row.leads === 0) {
       alerts.push({
         id: id(), severity: "critical",
         store: row.store.name,
