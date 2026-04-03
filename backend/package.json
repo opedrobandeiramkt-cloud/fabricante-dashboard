@@ -12,7 +12,7 @@
     "studio": "prisma studio"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24.0"
   },
   "keywords": [],
   "author": "",
