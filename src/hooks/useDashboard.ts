@@ -39,6 +39,8 @@ function getMockData(filters: DashboardFilters): Omit<DashboardData, "loading" |
   };
 }
 
+const POLL_INTERVAL_MS = 30_000; // 30 segundos
+
 export function useDashboard(filters: DashboardFilters): DashboardData {
   const [data, setData] = useState<Omit<DashboardData, "loading" | "error">>(
     () => getMockData(filters)
@@ -55,40 +57,42 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
 
   useEffect(() => {
     if (!USE_API) {
-      // Modo mock: recalcula de forma síncrona
       setData(getMockData(filters));
       return;
     }
 
-    // Modo API: busca dados reais do backend
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
     const { storeIds, period } = filters;
 
-    Promise.allSettled([
-      api.kpis(storeIds, period),
-      api.funnel(storeIds, period),
-      api.trend(storeIds, period),
-      api.ranking(storeIds, period),
-      api.stageTime(storeIds, period),
-    ])
-      .then(([kpis, funnel, trend, ranking, stageTimes]) => {
-        if (cancelled || !mountedRef.current) return;
-        setData({
-          kpis:       kpis.status       === "fulfilled" ? kpis.value       : { totalLeads: 0, totalLeadsDelta: 0, totalConversion: 0, totalConversionDelta: 0, wonDeals: 0, wonDealsDelta: 0, avgCycleDays: 0, avgCycleDelta: 0, totalRevenue: 0, totalRevenueDelta: 0, avgTicket: 0, avgTicketDelta: 0 },
-          funnel:     funnel.status     === "fulfilled" ? funnel.value     : [],
-          trend:      trend.status      === "fulfilled" ? trend.value      : [],
-          ranking:    ranking.status    === "fulfilled" ? ranking.value    : [],
-          stageTimes: stageTimes.status === "fulfilled" ? stageTimes.value : [],
-        });
-      })
-      .finally(() => {
-        if (!cancelled && mountedRef.current) setLoading(false);
-      });
+    async function fetchAll(isPolling = false) {
+      if (!isPolling) setLoading(true);
+      setError(null);
 
-    return () => { cancelled = true; };
+      const [kpis, funnel, trend, ranking, stageTimes] = await Promise.allSettled([
+        api.kpis(storeIds, period),
+        api.funnel(storeIds, period),
+        api.trend(storeIds, period),
+        api.ranking(storeIds, period),
+        api.stageTime(storeIds, period),
+      ]);
+
+      if (!mountedRef.current) return;
+      setData({
+        kpis:       kpis.status       === "fulfilled" ? kpis.value       : { totalLeads: 0, totalLeadsDelta: 0, totalConversion: 0, totalConversionDelta: 0, wonDeals: 0, wonDealsDelta: 0, avgCycleDays: 0, avgCycleDelta: 0, totalRevenue: 0, totalRevenueDelta: 0, avgTicket: 0, avgTicketDelta: 0 },
+        funnel:     funnel.status     === "fulfilled" ? funnel.value     : [],
+        trend:      trend.status      === "fulfilled" ? trend.value      : [],
+        ranking:    ranking.status    === "fulfilled" ? ranking.value    : [],
+        stageTimes: stageTimes.status === "fulfilled" ? stageTimes.value : [],
+      });
+      if (!isPolling && mountedRef.current) setLoading(false);
+    }
+
+    fetchAll(false);
+
+    const intervalId = setInterval(() => {
+      if (mountedRef.current) fetchAll(true);
+    }, POLL_INTERVAL_MS);
+
+    return () => { clearInterval(intervalId); };
   }, [filters]);
 
   return { ...data, loading, error };

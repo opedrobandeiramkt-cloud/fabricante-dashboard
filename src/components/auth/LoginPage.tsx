@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
+// DemoCredential removido — não exportar credenciais em produção
 import { useAuth } from "@/contexts/AuthContext";
 import logoSvg from "@/assets/logo.svg";
 
@@ -111,31 +112,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Credenciais de demo */}
-          <div className="border-t border-border pt-4 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Credenciais de demonstração:</p>
-            <div className="space-y-1.5">
-              <DemoCredential
-                label="Admin (acesso total)"
-                email="admin@igui.com.br"
-                password="admin2024"
-                badge="admin"
-                onUse={(e, p) => { setEmail(e); setPassword(p); setError(null); }}
-              />
-              <DemoCredential
-                label="Carlos — SP Centro + Campinas"
-                email="carlos@igui.com.br"
-                password="igui2024"
-                onUse={(e, p) => { setEmail(e); setPassword(p); setError(null); }}
-              />
-              <DemoCredential
-                label="Ana — Curitiba"
-                email="ana@igui.com.br"
-                password="igui2024"
-                onUse={(e, p) => { setEmail(e); setPassword(p); setError(null); }}
-              />
-            </div>
-          </div>
         </div>
       </div>
     </div>

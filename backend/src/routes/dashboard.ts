@@ -57,11 +57,13 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const periodFilter  = { occurredAt: { gte: start, lte: end } };
       const prevFilter    = { occurredAt: { gte: ps, lte: pe } };
 
-      // Entradas no funil (fromStage = null)
-      const [entryCount, prevEntryCount] = await Promise.all([
-        prisma.leadEvent.count({ where: { ...baseFilter, ...periodFilter, fromStageId: null } }),
-        prisma.leadEvent.count({ where: { ...baseFilter, ...prevFilter,  fromStageId: null } }),
+      // Entradas no funil (fromStage = null) — leads únicos
+      const [entryRows, prevEntryRows] = await Promise.all([
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
       ]);
+      const entryCount     = entryRows.length;
+      const prevEntryCount = prevEntryRows.length;
 
       // Etapas de ganho/perda
       const wonStages = await prisma.funnelStage.findMany({
@@ -70,10 +72,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
       });
       const wonStageIds = wonStages.map((s) => s.id);
 
-      const [wonCount, prevWonCount] = await Promise.all([
-        prisma.leadEvent.count({ where: { ...baseFilter, ...periodFilter, toStageId: { in: wonStageIds } } }),
-        prisma.leadEvent.count({ where: { ...baseFilter, ...prevFilter,  toStageId: { in: wonStageIds } } }),
+      const [wonRows, prevWonRows] = await Promise.all([
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
       ]);
+      const wonCount     = wonRows.length;
+      const prevWonCount = prevWonRows.length;
 
       // Tempo médio de ciclo (entrada até fechamento)
       const closedLeads = await prisma.lead.findMany({
@@ -135,16 +139,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
         orderBy: { orderIndex: "asc" },
       });
 
-      // Conta leads que chegaram em cada etapa no período
+      // Conta leads únicos que chegaram em cada etapa no período
       const counts = await Promise.all(
         stages.map((stage) =>
-          prisma.leadEvent.count({
+          prisma.leadEvent.findMany({
             where: {
               ...baseFilter,
               toStageId:  stage.id,
               occurredAt: { gte: start, lte: end },
             },
-          }).then((count) => ({ stageId: stage.id, count }))
+            distinct: ["leadId"],
+            select:   { leadId: true },
+          }).then((rows) => ({ stageId: stage.id, count: rows.length }))
         )
       );
 
@@ -268,10 +274,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
             occurredAt: { gte: start, lte: end },
           };
 
-          const [leads, wonDeals] = await Promise.all([
-            prisma.leadEvent.count({ where: { ...filter, fromStageId: null } }),
-            prisma.leadEvent.count({ where: { ...filter, toStageId: { in: wonStageIds } } }),
+          const [leadRows, wonRows] = await Promise.all([
+            prisma.leadEvent.findMany({ where: { ...filter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
+            prisma.leadEvent.findMany({ where: { ...filter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
           ]);
+          const leads    = leadRows.length;
+          const wonDeals = wonRows.length;
 
           return {
             store: {
