@@ -135,6 +135,15 @@ export async function ingestRoutes(app: FastifyInstance) {
           }
 
           // Resolve ou cria lead
+          const existingLead = await tx.lead.findUnique({
+            where: {
+              tenantId_externalId: {
+                tenantId:   tenant.id,
+                externalId: body.lead_external_id,
+              },
+            },
+          });
+
           const lead = await tx.lead.upsert({
             where: {
               tenantId_externalId: {
@@ -143,13 +152,13 @@ export async function ingestRoutes(app: FastifyInstance) {
               },
             },
             create: {
-              tenantId:      tenant.id,
-              storeId:       store.id,
-              externalId:    body.lead_external_id,
+              tenantId:       tenant.id,
+              storeId:        store.id,
+              externalId:     body.lead_external_id,
               currentStageId: toStage.id,
-              enteredAt:     occurredAt,
-              closedAt:      toStage.isWon || toStage.isLost ? occurredAt : null,
-              metadata:      (body.metadata ?? {}) as object,
+              enteredAt:      occurredAt,
+              closedAt:       toStage.isWon || toStage.isLost ? occurredAt : null,
+              metadata:       (body.metadata ?? {}) as object,
             },
             update: {
               currentStageId: toStage.id,
@@ -157,13 +166,20 @@ export async function ingestRoutes(app: FastifyInstance) {
             },
           });
 
+          // Se o lead já existia e from_stage não foi enviado,
+          // usa o currentStageId anterior como fromStage para rastrear a jornada
+          const resolvedFromStageId = fromStage?.id
+            ?? (existingLead?.currentStageId && existingLead.currentStageId !== toStage.id
+              ? existingLead.currentStageId
+              : null);
+
           // Persiste o evento
           const event = await tx.leadEvent.create({
             data: {
               tenantId:      tenant.id,
               storeId:       store.id,
               leadId:        lead.id,
-              fromStageId:   fromStage?.id ?? null,
+              fromStageId:   resolvedFromStageId,
               toStageId:     toStage.id,
               occurredAt,
               idempotencyKey,

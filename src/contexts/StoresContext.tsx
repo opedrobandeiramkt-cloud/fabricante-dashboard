@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { STORES as DEFAULT_STORES } from "@/lib/constants";
 import type { Store } from "@/lib/types";
 
+const USE_API     = import.meta.env.VITE_USE_API === "true";
+const BASE_URL    = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 const STORAGE_KEY = "igui_stores";
 
 function loadStores(): Store[] {
@@ -28,6 +30,28 @@ const StoresContext = createContext<StoresContextValue | null>(null);
 
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>(loadStores);
+
+  // Quando usa API real, carrega lojas do banco (IDs reais do backend)
+  useEffect(() => {
+    if (!USE_API) return;
+    fetch(`${BASE_URL}/api/dashboard/stores`, {
+      headers: { "x-tenant-slug": "igui" },
+    })
+      .then((r) => r.json())
+      .then((data: { id: string; name: string; city: string; state: string; externalId?: string }[]) => {
+        const apiStores: Store[] = data.map((s) => ({
+          id:         s.id,
+          name:       s.name,
+          city:       s.city,
+          state:      s.state,
+          externalId: s.externalId,
+          active:     true,
+          createdAt:  new Date().toISOString(),
+        }));
+        setStores(apiStores);
+      })
+      .catch(() => { /* mantém lojas do localStorage */ });
+  }, []);
 
   function persist(updated: Store[]) {
     setStores(updated);

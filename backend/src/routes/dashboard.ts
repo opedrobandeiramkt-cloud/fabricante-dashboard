@@ -301,7 +301,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const stores = await prisma.store.findMany({
       where:   { tenantId: tenant.id },
       orderBy: { name: "asc" },
-      select:  { id: true, name: true, city: true, state: true },
+      select:  { id: true, name: true, city: true, state: true, externalId: true },
     });
     return reply.send(stores);
   });
