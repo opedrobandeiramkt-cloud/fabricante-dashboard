@@ -71,7 +71,7 @@ function AuthenticatedApp() {
       funnel,
       ranking,
       trend,
-      alerts,
+      alerts: [],
     });
   }
 
