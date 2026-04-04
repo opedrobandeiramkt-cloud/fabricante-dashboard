@@ -82,7 +82,7 @@ function AuthenticatedApp() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <button onClick={() => handlePageChange("dashboard")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="h-9 w-9 rounded-lg bg-[#1a1510] border border-[#f0d488]/20 flex items-center justify-center overflow-hidden flex-shrink-0">
               <img src={logoSvg} alt="Logo" className="h-7 w-7 object-contain" />
             </div>
@@ -90,7 +90,7 @@ function AuthenticatedApp() {
               <h1 className="text-sm sm:text-base font-bold tracking-tight leading-none">Inteligência Comercial</h1>
               <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">iGUi Piscinas</p>
             </div>
-          </div>
+          </button>
 
           {/* Nav — desktop only */}
           <nav className="hidden md:flex items-center gap-1">
