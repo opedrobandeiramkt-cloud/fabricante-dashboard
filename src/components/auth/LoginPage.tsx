@@ -118,35 +118,3 @@ export function LoginPage() {
   );
 }
 
-function DemoCredential({
-  label, email, password, badge, onUse,
-}: {
-  label:    string;
-  email:    string;
-  password: string;
-  badge?:   string;
-  onUse:    (email: string, password: string) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onUse(email, password)}
-      className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group"
-    >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-foreground truncate">{label}</p>
-          {badge && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-semibold flex-shrink-0">
-              {badge}
-            </span>
-          )}
-        </div>
-        <p className="text-[11px] text-muted-foreground">{email}</p>
-      </div>
-      <span className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0">
-        usar →
-      </span>
-    </button>
-  );
-}
