@@ -31,9 +31,12 @@ const StoresContext = createContext<StoresContextValue | null>(null);
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>(loadStores);
 
-  // Quando usa API real, carrega lojas do banco (IDs reais do backend)
+  // Quando usa API real, carrega lojas do banco apenas se não houver dados locais salvos.
+  // Se houver dados no localStorage (inclusive alterações do usuário), usa esses dados.
   useEffect(() => {
     if (!USE_API) return;
+    const hasLocalData = localStorage.getItem(STORAGE_KEY);
+    if (hasLocalData) return; // Preserva alterações locais — não sobrescreve
     fetch(`${BASE_URL}/api/dashboard/stores`, {
       headers: { "x-tenant-slug": "igui" },
     })
@@ -49,6 +52,7 @@ export function StoresProvider({ children }: { children: ReactNode }) {
           createdAt:  new Date().toISOString(),
         }));
         setStores(apiStores);
+        saveStores(apiStores); // Persiste no localStorage para próximas visitas
       })
       .catch(() => { /* mantém lojas do localStorage */ });
   }, []);
