@@ -2,9 +2,24 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { STORES as DEFAULT_STORES } from "@/lib/constants";
 import type { Store } from "@/lib/types";
 
-const USE_API     = import.meta.env.VITE_USE_API === "true";
-const BASE_URL    = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
-const STORAGE_KEY = "igui_stores";
+const USE_API      = import.meta.env.VITE_USE_API === "true";
+const BASE_URL     = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
+const STORAGE_KEY  = "igui_stores";
+const DELETED_KEY  = "igui_deleted_stores"; // IDs permanentemente excluídos
+
+function loadDeletedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch { /* ignore */ }
+  return new Set();
+}
+
+function saveDeletedId(id: string) {
+  const ids = loadDeletedIds();
+  ids.add(id);
+  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+}
 
 function loadStores(): Store[] {
   try {
@@ -40,19 +55,22 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     })
       .then((r) => r.json())
       .then((data: { id: string; name: string; city: string; state: string; externalId?: string }[]) => {
-        const localMap = new Map(loadStores().map((s) => [s.id, s]));
-        const apiStores: Store[] = data.map((s) => {
-          const local = localMap.get(s.id);
-          return {
-            id:         s.id,
-            name:       local?.name       ?? s.name,
-            city:       local?.city       ?? s.city,
-            state:      local?.state      ?? s.state,
-            externalId: s.externalId,
-            active:     local?.active     ?? true,
-            createdAt:  local?.createdAt  ?? new Date().toISOString(),
-          };
-        });
+        const localMap   = new Map(loadStores().map((s) => [s.id, s]));
+        const deletedIds = loadDeletedIds();
+        const apiStores: Store[] = data
+          .filter((s) => !deletedIds.has(s.id))
+          .map((s) => {
+            const local = localMap.get(s.id);
+            return {
+              id:         s.id,
+              name:       local?.name       ?? s.name,
+              city:       local?.city       ?? s.city,
+              state:      local?.state      ?? s.state,
+              externalId: s.externalId,
+              active:     local?.active     ?? true,
+              createdAt:  local?.createdAt  ?? new Date().toISOString(),
+            };
+          });
         setStores(apiStores);
         saveStores(apiStores);
       })
@@ -79,7 +97,8 @@ export function StoresProvider({ children }: { children: ReactNode }) {
   }
 
   function deleteStore(id: string) {
-    persist(stores.map((s) => (s.id === id ? { ...s, active: false } : s)));
+    saveDeletedId(id);
+    persist(stores.filter((s) => s.id !== id));
   }
 
   function toggleActive(id: string) {
