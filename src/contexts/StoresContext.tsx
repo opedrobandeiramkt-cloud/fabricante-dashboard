@@ -79,7 +79,7 @@ export function StoresProvider({ children }: { children: ReactNode }) {
   }
 
   function deleteStore(id: string) {
-    persist(stores.filter((s) => s.id !== id));
+    persist(stores.map((s) => (s.id === id ? { ...s, active: false } : s)));
   }
 
   function toggleActive(id: string) {

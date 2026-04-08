@@ -14,9 +14,10 @@ export function StoreFilter({ selected, onChange, restrictToIds }: StoreFilterPr
   const ref = useRef<HTMLDivElement>(null);
   const { stores } = useStores();
 
+  const activeStores = stores.filter((s) => s.active !== false);
   const visibleStores = restrictToIds
-    ? stores.filter((s) => restrictToIds.includes(s.id))
-    : stores;
+    ? activeStores.filter((s) => restrictToIds.includes(s.id))
+    : activeStores;
 
   const isRestricted = !!restrictToIds;
 
