@@ -107,6 +107,19 @@ model LeadEvent {
   @@map("lead_events")
 }
 
+// ─── Tokens de reset de senha ─────────────────────────────────────────────────
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
 // ─── Eventos com falha na ingestão (reprocessamento) ─────────────────────────
 model FailedEvent {
   id         String   @id @default(uuid())

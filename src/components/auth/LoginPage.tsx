@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
-// DemoCredential removido — não exportar credenciais em produção
 import { useAuth } from "@/contexts/AuthContext";
+import { ForgotPasswordModal } from "./ForgotPasswordModal";
 import logoSvg from "@/assets/logo.svg";
 
 export function LoginPage() {
   const { login } = useAuth();
 
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [showPwd,  setShowPwd]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
+  const [email,         setEmail]         = useState("");
+  const [password,      setPassword]      = useState("");
+  const [showPwd,       setShowPwd]       = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
+  const [showForgot,    setShowForgot]    = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,8 +113,20 @@ export function LoginPage() {
             </button>
           </form>
 
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+
         </div>
       </div>
+
+      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
     </div>
   );
 }

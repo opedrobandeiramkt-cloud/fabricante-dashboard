@@ -8,9 +8,10 @@ import { TrendChart }     from "@/components/dashboard/TrendChart";
 import { StoreRanking }   from "@/components/dashboard/StoreRanking";
 import { StoreFilter }    from "@/components/dashboard/StoreFilter";
 import { StageTimeChart } from "@/components/dashboard/StageTimeChart";
-import { StoresPage }     from "@/components/stores/StoresPage";
-import { UsersPage }      from "@/components/users/UsersPage";
-import { LoginPage }      from "@/components/auth/LoginPage";
+import { StoresPage }          from "@/components/stores/StoresPage";
+import { UsersPage }           from "@/components/users/UsersPage";
+import { LoginPage }           from "@/components/auth/LoginPage";
+import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
 import { useDashboard }   from "@/hooks/useDashboard";
 import { PERIOD_LABELS } from "@/lib/constants";
@@ -23,6 +24,16 @@ type Page = "dashboard" | "stores" | "users";
 
 export default function App() {
   const { isAuthenticated } = useAuth();
+
+  // Detecta link de reset de senha na URL: ?reset=TOKEN
+  const resetToken = new URLSearchParams(window.location.search).get("reset");
+  if (resetToken) {
+    function clearTokenAndGoLogin() {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    return <ResetPasswordPage token={resetToken} onDone={clearTokenAndGoLogin} />;
+  }
+
   if (!isAuthenticated) return <LoginPage />;
   return <AuthenticatedApp />;
 }

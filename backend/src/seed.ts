@@ -2,16 +2,15 @@ import "dotenv/config";
 import { prisma } from "./lib/prisma.js";
 
 const STAGES = [
-  { key: "lead_capturado",        label: "Lead Capturado",          orderIndex: 1,  isWon: false, isLost: false },
-  { key: "visita_agendada",       label: "Visita Técnica Agendada", orderIndex: 2,  isWon: false, isLost: false },
-  { key: "visita_realizada",      label: "Visita Realizada",        orderIndex: 3,  isWon: false, isLost: false },
-  { key: "projeto_3d",            label: "Elaboração de Projeto 3D",orderIndex: 4,  isWon: false, isLost: false },
-  { key: "orcamento_enviado",     label: "Orçamento Enviado",       orderIndex: 5,  isWon: false, isLost: false },
-  { key: "em_negociacao",         label: "Em Negociação",           orderIndex: 6,  isWon: false, isLost: false },
-  { key: "contrato_enviado",      label: "Contrato Enviado",        orderIndex: 7,  isWon: false, isLost: false },
-  { key: "aguardando_pagamento",  label: "Aguardando Pagamento",    orderIndex: 8,  isWon: false, isLost: false },
-  { key: "pagamento_aprovado",    label: "Pagamento Aprovado",      orderIndex: 9,  isWon: true,  isLost: false },
-  { key: "venda_perdida",         label: "Venda Perdida",           orderIndex: 10, isWon: false, isLost: true  },
+  { key: "lead_capturado",       label: "Lead Capturado",            orderIndex: 1, isWon: false, isLost: false },
+  { key: "visita_agendada",      label: "Visita Técnica Agendada",   orderIndex: 2, isWon: false, isLost: false },
+  { key: "visita_realizada",     label: "Visita Realizada",          orderIndex: 3, isWon: false, isLost: false },
+  { key: "projeto_3d",           label: "Elaboração de Projeto 3D",  orderIndex: 4, isWon: false, isLost: false },
+  { key: "orcamento_enviado",    label: "Orçamento Enviado",         orderIndex: 5, isWon: false, isLost: false },
+  { key: "negociacao",           label: "Em Negociação",             orderIndex: 6, isWon: false, isLost: false },
+  { key: "contrato_enviado",     label: "Contrato Enviado",          orderIndex: 7, isWon: false, isLost: false },
+  { key: "aguardando_pagamento", label: "Aguardando Pagamento",      orderIndex: 8, isWon: false, isLost: false },
+  { key: "pagamento_aprovado",   label: "Pagamento Aprovado",        orderIndex: 9, isWon: true,  isLost: false },
 ];
 
 const STORES = [
