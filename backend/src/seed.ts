@@ -33,25 +33,33 @@ async function main() {
   });
   console.log(`✅ Tenant: ${tenant.name} (${tenant.id})`);
 
-  // Cria etapas do funil
+  // Cria etapas do funil (ignora se já existirem com conflito de order_index)
+  let stagesOk = 0;
   for (const stage of STAGES) {
-    await prisma.funnelStage.upsert({
-      where:  { tenantId_key: { tenantId: tenant.id, key: stage.key } },
-      create: { tenantId: tenant.id, ...stage },
-      update: { label: stage.label, orderIndex: stage.orderIndex },
-    });
+    try {
+      await prisma.funnelStage.upsert({
+        where:  { tenantId_key: { tenantId: tenant.id, key: stage.key } },
+        create: { tenantId: tenant.id, ...stage },
+        update: { label: stage.label },
+      });
+      stagesOk++;
+    } catch { /* já existe com outro order_index, ignora */ }
   }
-  console.log(`✅ ${STAGES.length} etapas do funil criadas`);
+  console.log(`✅ ${stagesOk}/${STAGES.length} etapas do funil processadas`);
 
-  // Cria lojas
+  // Cria lojas (ignora conflitos)
+  let storesOk = 0;
   for (const store of STORES) {
-    await prisma.store.upsert({
-      where:  { tenantId_externalId: { tenantId: tenant.id, externalId: store.externalId } },
-      create: { tenantId: tenant.id, ...store },
-      update: { name: store.name },
-    });
+    try {
+      await prisma.store.upsert({
+        where:  { tenantId_externalId: { tenantId: tenant.id, externalId: store.externalId } },
+        create: { tenantId: tenant.id, ...store },
+        update: { name: store.name },
+      });
+      storesOk++;
+    } catch { /* ignora */ }
   }
-  console.log(`✅ ${STORES.length} lojas criadas`);
+  console.log(`✅ ${storesOk}/${STORES.length} lojas processadas`);
 
   // Cria usuário admin padrão (só se não existir)
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@igui.com.br";
