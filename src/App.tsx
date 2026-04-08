@@ -70,16 +70,13 @@ function AuthenticatedApp() {
 
   const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
 
-  // Filtra ranking para mostrar apenas lojas locais e usa o nome/cidade local (sincronizado)
+  // Usa nome/cidade da loja local quando disponível (override), mas nunca filtra linhas do ranking
   const storeMap = new Map(stores.map((s) => [s.id, s]));
-  const filteredRanking = storeMap.size > 0
-    ? ranking
-        .filter((r) => storeMap.has(r.store.id))
-        .map((r) => {
-          const local = storeMap.get(r.store.id)!;
-          return { ...r, store: { ...r.store, name: local.name, city: local.city ?? r.store.city, state: local.state ?? r.store.state } };
-        })
-    : ranking;
+  const filteredRanking = ranking.map((r) => {
+    const local = storeMap.get(r.store.id);
+    if (!local) return r;
+    return { ...r, store: { ...r.store, name: local.name, city: local.city ?? r.store.city, state: local.state ?? r.store.state } };
+  });
 
   const storeLabel = selectedStores.length === 0
     ? "Todas as lojas"
