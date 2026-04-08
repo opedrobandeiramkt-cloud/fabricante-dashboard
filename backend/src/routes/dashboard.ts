@@ -303,6 +303,80 @@ export async function dashboardRoutes(app: FastifyInstance) {
     }
   );
 
+  // ── GET /api/dashboard/stage-time ───────────────────────────────────────────
+  app.get<{ Querystring: DashboardQuery }>(
+    "/api/dashboard/stage-time",
+    { schema: { querystring: querySchema } },
+    async (request, reply) => {
+      const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
+      const period   = (request.query.period ?? "30d") as Period;
+      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+
+      const { start, end } = getPeriodRange(period);
+
+      const stages = await prisma.funnelStage.findMany({
+        where:   { tenantId: tenant.id },
+        orderBy: { orderIndex: "asc" },
+      });
+
+      if (stages.length === 0) return reply.send([]);
+
+      // Calcula tempo médio em cada etapa usando window function LEAD
+      type AvgRow = { to_stage_id: string; avg_days: number };
+      let rows: AvgRow[];
+
+      if (storeIds.length > 0) {
+        rows = await prisma.$queryRaw<AvgRow[]>`
+          WITH ordered AS (
+            SELECT
+              lead_id,
+              to_stage_id,
+              occurred_at,
+              LEAD(occurred_at) OVER (PARTITION BY lead_id ORDER BY occurred_at) AS next_at
+            FROM lead_events
+            WHERE tenant_id = ${tenant.id}::uuid
+              AND store_id  = ANY(${storeIds}::uuid[])
+              AND occurred_at BETWEEN ${start} AND ${end}
+          )
+          SELECT
+            to_stage_id::text,
+            AVG(EXTRACT(EPOCH FROM (next_at - occurred_at)) / 86400)::float AS avg_days
+          FROM ordered
+          WHERE next_at IS NOT NULL
+          GROUP BY to_stage_id
+        `;
+      } else {
+        rows = await prisma.$queryRaw<AvgRow[]>`
+          WITH ordered AS (
+            SELECT
+              lead_id,
+              to_stage_id,
+              occurred_at,
+              LEAD(occurred_at) OVER (PARTITION BY lead_id ORDER BY occurred_at) AS next_at
+            FROM lead_events
+            WHERE tenant_id = ${tenant.id}::uuid
+              AND occurred_at BETWEEN ${start} AND ${end}
+          )
+          SELECT
+            to_stage_id::text,
+            AVG(EXTRACT(EPOCH FROM (next_at - occurred_at)) / 86400)::float AS avg_days
+          FROM ordered
+          WHERE next_at IS NOT NULL
+          GROUP BY to_stage_id
+        `;
+      }
+
+      const avgMap = Object.fromEntries(rows.map((r) => [r.to_stage_id, Math.round(r.avg_days)]));
+      const result = stages.map((s) => ({ key: s.key, label: s.label, avgDays: avgMap[s.id] ?? 0 }));
+      const nonZero = result.filter((r) => r.avgDays > 0);
+      const globalAvg = nonZero.length ? nonZero.reduce((s, r) => s + r.avgDays, 0) / nonZero.length : 0;
+
+      return reply.send(
+        result.map((r) => ({ ...r, isBottleneck: r.avgDays > 0 && r.avgDays > globalAvg * 1.3 }))
+      );
+    }
+  );
+
   // ── GET /api/dashboard/stores ────────────────────────────────────────────────
   app.get("/api/dashboard/stores", async (request, reply) => {
     const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };

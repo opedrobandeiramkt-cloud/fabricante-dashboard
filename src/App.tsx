@@ -70,6 +70,12 @@ function AuthenticatedApp() {
 
   const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
 
+  // Filtra ranking para mostrar apenas lojas que existem na lista local (exclui deletadas)
+  const visibleStoreIds = new Set(stores.map((s) => s.id));
+  const filteredRanking = visibleStoreIds.size > 0
+    ? ranking.filter((r) => visibleStoreIds.has(r.store.id))
+    : ranking;
+
   const storeLabel = selectedStores.length === 0
     ? "Todas as lojas"
     : stores.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
@@ -280,7 +286,7 @@ function AuthenticatedApp() {
               <TrendChart  data={trend}  />
             </div>
             <StageTimeChart data={stageTimes} />
-            <StoreRanking   data={ranking}    />
+            <StoreRanking   data={filteredRanking} />
           </div>
         ) : page === "stores" ? (
           <StoresPage readOnly={!isAdmin} />

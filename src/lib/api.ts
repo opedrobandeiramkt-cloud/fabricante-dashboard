@@ -48,8 +48,7 @@ export const api = {
     return apiFetch("/api/dashboard/stores");
   },
 
-  // StageTime não tem endpoint próprio ainda — derivado do funil
-  stageTime(_storeIds: string[], _period: Period): Promise<StageTimeData[]> {
-    return Promise.resolve([]); // placeholder até implementar
+  stageTime(storeIds: string[], period: Period): Promise<StageTimeData[]> {
+    return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period)}`);
   },
 };

@@ -55,7 +55,13 @@ export function TrendChart({ data }: TrendChartProps) {
         </p>
       </div>
 
-      <ResponsiveContainer width="100%" height={340}>
+      {data.length === 0 ? (
+        <div className="flex items-center justify-center h-[340px] text-muted-foreground text-sm">
+          Sem dados no período selecionado
+        </div>
+      ) : null}
+
+      <ResponsiveContainer width="100%" height={data.length === 0 ? 0 : 340}>
         <LineChart data={data} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
