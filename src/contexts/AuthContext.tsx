@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { useUsersContext } from "@/contexts/UsersContext";
+import { api } from "@/lib/api";
 import type { AppUser } from "@/lib/auth-types";
+
+const USE_API = import.meta.env.VITE_USE_API === "true";
 
 const STORAGE_KEY = "igui_auth_user";
 
@@ -40,9 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> {
-    // Simula latência de rede
-    await new Promise((r) => setTimeout(r, 600));
+    if (USE_API) {
+      try {
+        const { user: found } = await api.login(email, password);
+        setUser(found);
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : "E-mail ou senha incorretos." };
+      }
+    }
 
+    // Fallback mock (dev sem API)
+    await new Promise((r) => setTimeout(r, 600));
     const found = authenticateUser(email, password);
     if (!found) {
       return { success: false, error: "E-mail ou senha incorretos." };

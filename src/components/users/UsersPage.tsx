@@ -21,9 +21,9 @@ export function UsersPage() {
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  function handleSave(data: UserFormData) {
-    if (modalUser === "new") addUser(data);
-    else if (modalUser)      updateUser(modalUser.id, data);
+  async function handleSave(data: UserFormData) {
+    if (modalUser === "new") await addUser(data);
+    else if (modalUser)      await updateUser(modalUser.id, data);
     setModalUser(null);
   }
 
@@ -191,7 +191,7 @@ export function UsersPage() {
       {deleteTarget && (
         <DeleteConfirmModal
           user={deleteTarget}
-          onConfirm={() => { deleteUser(deleteTarget.id); setDeleteTarget(null); }}
+          onConfirm={async () => { await deleteUser(deleteTarget.id); setDeleteTarget(null); }}
           onClose={() => setDeleteTarget(null)}
         />
       )}

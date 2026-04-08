@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "./lib/prisma.js";
+import { hashPassword } from "./lib/crypto.js";
 
 const STAGES = [
   { key: "lead_capturado",       label: "Lead Capturado",            orderIndex: 1, isWon: false, isLost: false },
@@ -51,6 +52,27 @@ async function main() {
     });
   }
   console.log(`✅ ${STORES.length} lojas criadas`);
+
+  // Cria usuário admin padrão (só se não existir)
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@igui.com.br";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "admin2024";
+  const existingAdmin = await prisma.user.findFirst({ where: { tenantId: tenant.id, email: adminEmail } });
+  if (!existingAdmin) {
+    await prisma.user.create({
+      data: {
+        tenantId:       tenant.id,
+        email:          adminEmail,
+        passwordHash:   await hashPassword(adminPassword),
+        name:           "Admin",
+        role:           "admin",
+        storeIds:       [],
+        avatarInitials: "AD",
+      },
+    });
+    console.log(`✅ Admin criado: ${adminEmail} / ${adminPassword}`);
+  } else {
+    console.log(`✅ Admin já existe: ${adminEmail}`);
+  }
 
   console.log("\n🎉 Seed concluído!\n");
   console.log("Tenant slug para usar nos requests: igui");

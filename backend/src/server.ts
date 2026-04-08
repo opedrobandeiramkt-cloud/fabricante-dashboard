@@ -24,8 +24,8 @@ await app.register(cors, {
     process.env.FRONTEND_URL ?? "http://localhost:5173",
     "http://localhost:5173",
   ],
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug", "x-user-id"],
 });
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────

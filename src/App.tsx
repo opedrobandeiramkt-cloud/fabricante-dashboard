@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download, Menu, X } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
@@ -16,6 +16,7 @@ import { useAuth }        from "@/contexts/AuthContext";
 import { useDashboard }   from "@/hooks/useDashboard";
 import { PERIOD_LABELS } from "@/lib/constants";
 import { useStores } from "@/contexts/StoresContext";
+import { useUsersContext } from "@/contexts/UsersContext";
 import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
 
@@ -41,6 +42,14 @@ export default function App() {
 function AuthenticatedApp() {
   const { user, isAdmin, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
+  const { reloadUsers } = useUsersContext();
+
+  // Carrega usuários da API quando admin faz login
+  useEffect(() => {
+    if (user?.role === "admin" && user.id) {
+      reloadUsers(user.id);
+    }
+  }, [user?.id]);
 
   const [page,          setPage]          = useState<Page>("dashboard");
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
@@ -70,13 +79,19 @@ function AuthenticatedApp() {
 
   const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
 
-  // Usa nome/cidade da loja local quando disponível (override), mas nunca filtra linhas do ranking
+  // Mostra apenas lojas ativas; aplica nome/cidade local quando disponível
   const storeMap = new Map(stores.map((s) => [s.id, s]));
-  const filteredRanking = ranking.map((r) => {
-    const local = storeMap.get(r.store.id);
-    if (!local) return r;
-    return { ...r, store: { ...r.store, name: local.name, city: local.city ?? r.store.city, state: local.state ?? r.store.state } };
-  });
+  const filteredRanking = ranking
+    .filter((r) => {
+      const local = storeMap.get(r.store.id);
+      // Se loja existe localmente, respeita o status active; se não existe, exibe mesmo assim
+      return local ? local.active !== false : true;
+    })
+    .map((r) => {
+      const local = storeMap.get(r.store.id);
+      if (!local) return r;
+      return { ...r, store: { ...r.store, name: local.name, city: local.city ?? r.store.city, state: local.state ?? r.store.state } };
+    });
 
   const storeLabel = selectedStores.length === 0
     ? "Todas as lojas"

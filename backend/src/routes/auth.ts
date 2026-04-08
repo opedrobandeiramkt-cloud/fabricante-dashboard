@@ -2,13 +2,176 @@ import { type FastifyInstance } from "fastify";
 import { randomBytes } from "crypto";
 import { Resend } from "resend";
 import { prisma } from "../lib/prisma.js";
+import { hashPassword, verifyPassword } from "../lib/crypto.js";
 
 const resend      = new Resend(process.env.RESEND_API_KEY);
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const FROM_EMAIL   = process.env.FROM_EMAIL    ?? "noreply@igui.com.br";
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
 
+function userToDto(user: { id: string; name: string; email: string; role: string; storeIds: unknown; avatarInitials: string }) {
+  return {
+    id:             user.id,
+    name:           user.name,
+    email:          user.email,
+    role:           user.role as "admin" | "fabricante",
+    storeIds:       (user.storeIds as string[]) ?? [],
+    avatarInitials: user.avatarInitials,
+  };
+}
+
+async function resolveAdminUser(tenantId: string, userId: string) {
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+  if (!user || user.role !== "admin") return null;
+  return user;
+}
+
 export async function authRoutes(app: FastifyInstance) {
+
+  // POST /api/auth/login ──────────────────────────────────────────────────────
+  app.post("/api/auth/login", async (req, reply) => {
+    const { email, password } = req.body as { email?: string; password?: string };
+    const tenantSlug = req.headers["x-tenant-slug"] as string;
+
+    if (!email || !password || !tenantSlug) {
+      return reply.code(400).send({ error: "Dados inválidos." });
+    }
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
+
+    const user = await prisma.user.findFirst({
+      where: { tenantId: tenant.id, email: email.toLowerCase().trim() },
+    });
+
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      return reply.code(401).send({ error: "E-mail ou senha incorretos." });
+    }
+
+    return reply.send({ user: userToDto(user) });
+  });
+
+  // GET /api/auth/users ───────────────────────────────────────────────────────
+  app.get("/api/auth/users", async (req, reply) => {
+    const tenantSlug = req.headers["x-tenant-slug"] as string;
+    const requesterId = req.headers["x-user-id"] as string;
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
+
+    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+
+    const users = await prisma.user.findMany({
+      where:   { tenantId: tenant.id },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return reply.send(users.map(userToDto));
+  });
+
+  // POST /api/auth/users ──────────────────────────────────────────────────────
+  app.post("/api/auth/users", async (req, reply) => {
+    const tenantSlug = req.headers["x-tenant-slug"] as string;
+    const requesterId = req.headers["x-user-id"] as string;
+    const body = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] };
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
+
+    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+
+    if (!body.name || !body.email || !body.password || !body.role) {
+      return reply.code(400).send({ error: "Campos obrigatórios: name, email, password, role." });
+    }
+
+    const exists = await prisma.user.findFirst({
+      where: { tenantId: tenant.id, email: body.email.toLowerCase().trim() },
+    });
+    if (exists) return reply.code(409).send({ error: "E-mail já cadastrado." });
+
+    const avatarInitials = body.name.split(" ").slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("");
+    const passwordHash   = await hashPassword(body.password);
+
+    const user = await prisma.user.create({
+      data: {
+        tenantId:       tenant.id,
+        email:          body.email.toLowerCase().trim(),
+        passwordHash,
+        name:           body.name,
+        role:           body.role,
+        storeIds:       body.role === "admin" ? [] : (body.storeIds ?? []),
+        avatarInitials,
+      },
+    });
+
+    return reply.code(201).send({ user: userToDto(user) });
+  });
+
+  // PUT /api/auth/users/:id ───────────────────────────────────────────────────
+  app.put<{ Params: { id: string } }>("/api/auth/users/:id", async (req, reply) => {
+    const tenantSlug  = req.headers["x-tenant-slug"] as string;
+    const requesterId = req.headers["x-user-id"] as string;
+    const { id }      = req.params;
+    const body        = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] };
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
+
+    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+
+    const existing = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
+    if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
+
+    const avatarInitials = body.name
+      ? body.name.split(" ").slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("")
+      : existing.avatarInitials;
+
+    const updateData: Record<string, unknown> = {
+      name:           body.name           ?? existing.name,
+      email:          body.email          ? body.email.toLowerCase().trim() : existing.email,
+      role:           body.role           ?? existing.role,
+      storeIds:       body.role === "admin" ? [] : (body.storeIds ?? existing.storeIds),
+      avatarInitials,
+    };
+
+    if (body.password) {
+      updateData.passwordHash = await hashPassword(body.password);
+    }
+
+    const user = await prisma.user.update({ where: { id }, data: updateData });
+    return reply.send({ user: userToDto(user) });
+  });
+
+  // DELETE /api/auth/users/:id ────────────────────────────────────────────────
+  app.delete<{ Params: { id: string } }>("/api/auth/users/:id", async (req, reply) => {
+    const tenantSlug  = req.headers["x-tenant-slug"] as string;
+    const requesterId = req.headers["x-user-id"] as string;
+    const { id }      = req.params;
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
+
+    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+
+    const existing = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
+    if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
+
+    if (existing.role === "admin") {
+      const adminCount = await prisma.user.count({ where: { tenantId: tenant.id, role: "admin" } });
+      if (adminCount <= 1) return reply.code(400).send({ error: "Não é possível remover o único admin." });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return reply.code(200).send({ ok: true });
+  });
 
   // POST /api/auth/forgot-password
   app.post("/api/auth/forgot-password", async (req, reply) => {
@@ -91,7 +254,17 @@ export async function authRoutes(app: FastifyInstance) {
       data:  { usedAt: new Date() },
     });
 
-    // Retorna o email para o frontend atualizar o localStorage
+    // Atualiza a senha no banco se o usuário existir
+    const user = await prisma.user.findFirst({
+      where: { email: record.email },
+    });
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data:  { passwordHash: await hashPassword(newPassword) },
+      });
+    }
+
     return reply.code(200).send({ ok: true, email: record.email });
   });
 }

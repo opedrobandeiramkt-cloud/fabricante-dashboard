@@ -31,28 +31,30 @@ const StoresContext = createContext<StoresContextValue | null>(null);
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>(loadStores);
 
-  // Quando usa API real, carrega lojas do banco apenas se não houver dados locais salvos.
-  // Se houver dados no localStorage (inclusive alterações do usuário), usa esses dados.
+  // Quando usa API real, sempre sincroniza com o banco para garantir IDs corretos.
+  // Preserva o status `active` e customizações locais de nome/cidade.
   useEffect(() => {
     if (!USE_API) return;
-    const hasLocalData = localStorage.getItem(STORAGE_KEY);
-    if (hasLocalData) return; // Preserva alterações locais — não sobrescreve
     fetch(`${BASE_URL}/api/dashboard/stores`, {
       headers: { "x-tenant-slug": "igui" },
     })
       .then((r) => r.json())
       .then((data: { id: string; name: string; city: string; state: string; externalId?: string }[]) => {
-        const apiStores: Store[] = data.map((s) => ({
-          id:         s.id,
-          name:       s.name,
-          city:       s.city,
-          state:      s.state,
-          externalId: s.externalId,
-          active:     true,
-          createdAt:  new Date().toISOString(),
-        }));
+        const localMap = new Map(loadStores().map((s) => [s.id, s]));
+        const apiStores: Store[] = data.map((s) => {
+          const local = localMap.get(s.id);
+          return {
+            id:         s.id,
+            name:       local?.name       ?? s.name,
+            city:       local?.city       ?? s.city,
+            state:      local?.state      ?? s.state,
+            externalId: s.externalId,
+            active:     local?.active     ?? true,
+            createdAt:  local?.createdAt  ?? new Date().toISOString(),
+          };
+        });
         setStores(apiStores);
-        saveStores(apiStores); // Persiste no localStorage para próximas visitas
+        saveStores(apiStores);
       })
       .catch(() => { /* mantém lojas do localStorage */ });
   }, []);

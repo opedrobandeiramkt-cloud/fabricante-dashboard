@@ -6,14 +6,18 @@ import type {
   StoreRankingRow,
   TrendPoint,
 } from "./types";
+import type { AppUser } from "./auth-types";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 const TENANT   = import.meta.env.VITE_TENANT_SLUG ?? "igui";
 
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "x-tenant-slug": TENANT },
-  });
+async function apiFetch<T>(path: string, options?: RequestInit & { userId?: string }): Promise<T> {
+  const headers: Record<string, string> = {
+    "x-tenant-slug": TENANT,
+    ...(options?.userId ? { "x-user-id": options.userId } : {}),
+    ...(options?.body ? { "Content-Type": "application/json" } : {}),
+  };
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error((err as { error?: string }).error ?? "Erro na API");
@@ -50,5 +54,39 @@ export const api = {
 
   stageTime(storeIds: string[], period: Period): Promise<StageTimeData[]> {
     return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period)}`);
+  },
+
+  login(email: string, password: string): Promise<{ user: AppUser }> {
+    return apiFetch("/api/auth/login", {
+      method: "POST",
+      body:   JSON.stringify({ email, password }),
+    });
+  },
+
+  listUsers(adminId: string): Promise<AppUser[]> {
+    return apiFetch("/api/auth/users", { userId: adminId });
+  },
+
+  createUser(adminId: string, data: { name: string; email: string; password: string; role: string; storeIds: string[] }): Promise<{ user: AppUser }> {
+    return apiFetch("/api/auth/users", {
+      method: "POST",
+      userId: adminId,
+      body:   JSON.stringify(data),
+    });
+  },
+
+  updateUser(adminId: string, id: string, data: { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] }): Promise<{ user: AppUser }> {
+    return apiFetch(`/api/auth/users/${id}`, {
+      method: "PUT",
+      userId: adminId,
+      body:   JSON.stringify(data),
+    });
+  },
+
+  deleteUser(adminId: string, id: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/auth/users/${id}`, {
+      method: "DELETE",
+      userId: adminId,
+    });
   },
 };
