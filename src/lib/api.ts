@@ -89,4 +89,24 @@ export const api = {
       userId: adminId,
     });
   },
+
+  createStore(data: { name: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string }> {
+    return apiFetch("/api/dashboard/stores", {
+      method: "POST",
+      body:   JSON.stringify(data),
+    });
+  },
+
+  updateStore(id: string, data: { name?: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string }> {
+    return apiFetch(`/api/dashboard/stores/${id}`, {
+      method: "PUT",
+      body:   JSON.stringify(data),
+    });
+  },
+
+  deleteStore(id: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/dashboard/stores/${id}`, {
+      method: "DELETE",
+    });
+  },
 };

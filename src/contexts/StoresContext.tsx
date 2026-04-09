@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { STORES as DEFAULT_STORES } from "@/lib/constants";
 import type { Store } from "@/lib/types";
+import { api } from "@/lib/api";
 
 const USE_API      = import.meta.env.VITE_USE_API === "true";
 const BASE_URL     = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
@@ -35,9 +36,9 @@ function saveStores(stores: Store[]) {
 
 interface StoresContextValue {
   stores:       Store[];
-  addStore:     (data: Omit<Store, "id" | "createdAt">) => Store;
-  updateStore:  (id: string, data: Partial<Omit<Store, "id" | "createdAt">>) => void;
-  deleteStore:  (id: string) => void;
+  addStore:     (data: Omit<Store, "id" | "createdAt">) => Promise<Store>;
+  updateStore:  (id: string, data: Partial<Omit<Store, "id" | "createdAt">>) => Promise<void>;
+  deleteStore:  (id: string) => Promise<void>;
   toggleActive: (id: string) => void;
 }
 
@@ -82,7 +83,21 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     saveStores(updated);
   }
 
-  function addStore(data: Omit<Store, "id" | "createdAt">): Store {
+  async function addStore(data: Omit<Store, "id" | "createdAt">): Promise<Store> {
+    if (USE_API) {
+      const created = await api.createStore({ name: data.name, city: data.city, state: data.state, externalId: data.externalId });
+      const newStore: Store = {
+        id:         created.id,
+        name:       created.name,
+        city:       created.city ?? "",
+        state:      created.state ?? "",
+        externalId: created.externalId,
+        active:     data.active ?? true,
+        createdAt:  new Date().toISOString(),
+      };
+      persist([...stores, newStore]);
+      return newStore;
+    }
     const newStore: Store = {
       ...data,
       id:        `loja-${Date.now()}`,
@@ -92,11 +107,17 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     return newStore;
   }
 
-  function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>) {
+  async function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>): Promise<void> {
+    if (USE_API) {
+      await api.updateStore(id, { name: data.name, city: data.city, state: data.state, externalId: data.externalId });
+    }
     persist(stores.map((s) => (s.id === id ? { ...s, ...data } : s)));
   }
 
-  function deleteStore(id: string) {
+  async function deleteStore(id: string): Promise<void> {
+    if (USE_API) {
+      await api.deleteStore(id);
+    }
     saveDeletedId(id);
     persist(stores.filter((s) => s.id !== id));
   }

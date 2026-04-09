@@ -31,11 +31,11 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
     return matchSearch && matchActive;
   });
 
-  function handleSave(data: Omit<StoreType, "id" | "createdAt">) {
+  async function handleSave(data: Omit<StoreType, "id" | "createdAt">) {
     if (modalStore === "new") {
-      addStore(data);
+      await addStore(data);
     } else if (modalStore) {
-      updateStore(modalStore.id, data);
+      await updateStore(modalStore.id, data);
     }
     setModalStore(null);
   }
@@ -145,8 +145,8 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
       {deleteTarget && (
         <DeleteConfirmModal
           store={deleteTarget}
-          onConfirm={() => {
-            deleteStore(deleteTarget.id);
+          onConfirm={async () => {
+            await deleteStore(deleteTarget.id);
             setDeleteTarget(null);
           }}
           onClose={() => setDeleteTarget(null)}

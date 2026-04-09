@@ -387,4 +387,66 @@ export async function dashboardRoutes(app: FastifyInstance) {
     });
     return reply.send(stores);
   });
+
+  // ── POST /api/dashboard/stores ───────────────────────────────────────────────
+  app.post("/api/dashboard/stores", async (request, reply) => {
+    const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const body   = request.body as { name?: string; city?: string; state?: string; externalId?: string };
+
+    if (!body.name?.trim()) {
+      return reply.code(400).send({ error: "Nome da loja é obrigatório." });
+    }
+
+    const store = await prisma.store.create({
+      data: {
+        tenantId:   tenant.id,
+        name:       body.name.trim(),
+        city:       body.city?.trim()       || null,
+        state:      body.state?.trim()      || null,
+        externalId: body.externalId?.trim() || null,
+      },
+      select: { id: true, name: true, city: true, state: true, externalId: true },
+    });
+
+    return reply.code(201).send(store);
+  });
+
+  // ── PUT /api/dashboard/stores/:id ────────────────────────────────────────────
+  app.put<{ Params: { id: string } }>("/api/dashboard/stores/:id", async (request, reply) => {
+    const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const { id } = request.params;
+    const body   = request.body as { name?: string; city?: string; state?: string; externalId?: string };
+
+    const existing = await prisma.store.findFirst({ where: { id, tenantId: tenant.id } });
+    if (!existing) return reply.code(404).send({ error: "Loja não encontrada." });
+
+    const store = await prisma.store.update({
+      where:  { id },
+      data: {
+        name:       body.name?.trim()       ?? existing.name,
+        city:       body.city?.trim()       ?? existing.city,
+        state:      body.state?.trim()      ?? existing.state,
+        externalId: body.externalId?.trim() ?? existing.externalId,
+      },
+      select: { id: true, name: true, city: true, state: true, externalId: true },
+    });
+
+    return reply.send(store);
+  });
+
+  // ── DELETE /api/dashboard/stores/:id ─────────────────────────────────────────
+  app.delete<{ Params: { id: string } }>("/api/dashboard/stores/:id", async (request, reply) => {
+    const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const { id } = request.params;
+
+    const existing = await prisma.store.findFirst({ where: { id, tenantId: tenant.id } });
+    if (!existing) return reply.code(404).send({ error: "Loja não encontrada." });
+
+    // Remove eventos e leads vinculados antes de deletar a loja
+    await prisma.leadEvent.deleteMany({ where: { storeId: id } });
+    await prisma.lead.deleteMany({ where: { storeId: id } });
+    await prisma.store.delete({ where: { id } });
+
+    return reply.send({ ok: true });
+  });
 }
