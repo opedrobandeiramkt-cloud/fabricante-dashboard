@@ -14,13 +14,6 @@ const STAGES = [
   { key: "pagamento_aprovado",   label: "Pagamento Aprovado",        orderIndex: 9, isWon: true,  isLost: false },
 ];
 
-const STORES = [
-  { externalId: "loja-sp-01", name: "iGUi São Paulo Centro",  city: "São Paulo",      state: "SP" },
-  { externalId: "loja-sp-02", name: "iGUi Campinas",           city: "Campinas",       state: "SP" },
-  { externalId: "loja-pr-01", name: "iGUi Curitiba",           city: "Curitiba",       state: "PR" },
-  { externalId: "loja-mg-01", name: "iGUi Belo Horizonte",     city: "Belo Horizonte", state: "MG" },
-  { externalId: "loja-rj-01", name: "iGUi Rio de Janeiro",     city: "Rio de Janeiro", state: "RJ" },
-];
 
 async function main() {
   console.log("🌱 Iniciando seed...");
@@ -48,20 +41,6 @@ async function main() {
     }
   }
   console.log(`✅ ${STAGES.length} etapas do funil processadas`);
-
-  // Cria lojas (ignora conflitos)
-  let storesOk = 0;
-  for (const store of STORES) {
-    try {
-      await prisma.store.upsert({
-        where:  { tenantId_externalId: { tenantId: tenant.id, externalId: store.externalId } },
-        create: { tenantId: tenant.id, ...store },
-        update: { name: store.name },
-      });
-      storesOk++;
-    } catch { /* ignora */ }
-  }
-  console.log(`✅ ${storesOk}/${STORES.length} lojas processadas`);
 
   // Cria usuário admin padrão (só se não existir)
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@igui.com.br";
@@ -91,7 +70,7 @@ async function main() {
     event_id:          "evt-001",
     crm_source:        "chatwoot",
     tenant_slug:       "igui",
-    store_external_id: "loja-sp-01",
+    store_external_id: "id-externo-da-loja-no-crm",
     lead_external_id:  "lead-123",
     from_stage:        null,
     to_stage:          "lead_capturado",
