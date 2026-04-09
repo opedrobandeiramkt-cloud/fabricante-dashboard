@@ -72,9 +72,21 @@ function AuthenticatedApp() {
     setMobileMenuOpen(false);
   }
 
+  // IDs das lojas ativas — usado para filtrar a API (exclui lojas inativas/excluídas)
+  const activeStoreIds = useMemo(
+    () => stores.filter((s) => s.active !== false).map((s) => s.id),
+    [stores]
+  );
+
+  // Quando "todas as lojas" está selecionado (array vazio), passa apenas as ativas
+  const effectiveStoreIds = useMemo(
+    () => selectedStores.length > 0 ? selectedStores : activeStoreIds,
+    [selectedStores, activeStoreIds]
+  );
+
   const filters = useMemo(
-    () => ({ storeIds: selectedStores, period }),
-    [selectedStores, period]
+    () => ({ storeIds: effectiveStoreIds, period }),
+    [effectiveStoreIds, period]
   );
 
   const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
