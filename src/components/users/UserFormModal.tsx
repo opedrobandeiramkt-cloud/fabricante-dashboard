@@ -6,7 +6,7 @@ import type { UserFormData } from "@/hooks/useUsers";
 
 interface UserFormModalProps {
   user:    AppUser | null; // null = novo
-  onSave:  (data: UserFormData) => void;
+  onSave:  (data: UserFormData) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -15,9 +15,11 @@ const EMPTY: UserFormData = {
 };
 
 export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
-  const [form,    setForm]    = useState<UserFormData>(EMPTY);
-  const [showPwd, setShowPwd] = useState(false);
-  const [errors,  setErrors]  = useState<Partial<Record<keyof UserFormData, string>>>({});
+  const [form,     setForm]     = useState<UserFormData>(EMPTY);
+  const [showPwd,  setShowPwd]  = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [errors,   setErrors]   = useState<Partial<Record<keyof UserFormData, string>>>({});
   const { stores } = useStores();
 
   const isNew = !user;
@@ -57,10 +59,14 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
     return Object.keys(e).length === 0;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    onSave(form);
+    setSaving(true);
+    setApiError(null);
+    const err = await onSave(form);
+    setSaving(false);
+    if (err) setApiError(err);
   }
 
   return (
@@ -180,16 +186,23 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
 
           </div>
 
+          {/* Erro da API */}
+          {apiError && (
+            <div className="mx-6 mb-4 px-3 py-2.5 rounded-lg bg-[hsl(var(--danger)/0.08)] border border-[hsl(var(--danger)/0.2)] text-sm text-[hsl(var(--danger))]">
+              {apiError}
+            </div>
+          )}
+
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors">
+            <button type="button" onClick={onClose} disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors disabled:opacity-50">
               Cancelar
             </button>
-            <button type="submit"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              <Save className="h-4 w-4" />
-              {isNew ? "Criar Usuário" : "Salvar Alterações"}
+            <button type="submit" disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60">
+              {saving ? <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Salvando..." : isNew ? "Criar Usuário" : "Salvar Alterações"}
             </button>
           </div>
         </form>

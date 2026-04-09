@@ -12,8 +12,9 @@ export function UsersPage() {
   const { users, addUser, updateUser, deleteUser } = useUsersContext();
   const { stores } = useStores();
 
-  const [search,      setSearch]      = useState("");
-  const [modalUser,   setModalUser]   = useState<AppUser | null | "new">(null);
+  const [search,       setSearch]       = useState("");
+  const [modalUser,    setModalUser]    = useState<AppUser | null | "new">(null);
+  const [saveError,    setSaveError]    = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
 
   const filtered = users.filter((u) =>
@@ -21,10 +22,18 @@ export function UsersPage() {
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  async function handleSave(data: UserFormData) {
-    if (modalUser === "new") await addUser(data);
-    else if (modalUser)      await updateUser(modalUser.id, data);
-    setModalUser(null);
+  async function handleSave(data: UserFormData): Promise<string | null> {
+    try {
+      if (modalUser === "new") await addUser(data);
+      else if (modalUser)      await updateUser(modalUser.id, data);
+      setModalUser(null);
+      setSaveError(null);
+      return null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao salvar usuário.";
+      setSaveError(msg);
+      return msg;
+    }
   }
 
   const adminCount     = users.filter((u) => u.role === "admin").length;
