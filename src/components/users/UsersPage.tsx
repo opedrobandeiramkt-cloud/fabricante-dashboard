@@ -14,7 +14,6 @@ export function UsersPage() {
 
   const [search,       setSearch]       = useState("");
   const [modalUser,    setModalUser]    = useState<AppUser | null | "new">(null);
-  const [saveError,    setSaveError]    = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
 
   const filtered = users.filter((u) =>
@@ -27,11 +26,9 @@ export function UsersPage() {
       if (modalUser === "new") await addUser(data);
       else if (modalUser)      await updateUser(modalUser.id, data);
       setModalUser(null);
-      setSaveError(null);
       return null;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar usuário.";
-      setSaveError(msg);
       return msg;
     }
   }
