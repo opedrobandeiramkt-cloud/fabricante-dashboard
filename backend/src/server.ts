@@ -19,18 +19,21 @@ const app = Fastify({
 
 await app.register(helmet, { contentSecurityPolicy: false });
 
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  "http://localhost:5174",
-  ...(process.env.FRONTEND_URL ?? "").split(",").map((u) => u.trim()).filter(Boolean),
-]);
+const allowedOrigins = new Set(
+  [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    ...(process.env.FRONTEND_URL ?? "").split(",").map((u) => u.trim().replace(/\/$/, "")).filter(Boolean),
+  ]
+);
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    const normalizedOrigin = origin?.replace(/\/$/, "");
+    if (!normalizedOrigin || allowedOrigins.has(normalizedOrigin)) {
       cb(null, true);
     } else {
-      cb(new Error("Not allowed by CORS"), false);
+      cb(null, false);
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

@@ -33,19 +33,21 @@ async function main() {
   });
   console.log(`✅ Tenant: ${tenant.name} (${tenant.id})`);
 
-  // Cria etapas do funil (ignora se já existirem com conflito de order_index)
-  let stagesOk = 0;
+  // Cria ou atualiza etapas do funil por orderIndex (preserva referências existentes)
   for (const stage of STAGES) {
-    try {
-      await prisma.funnelStage.upsert({
-        where:  { tenantId_key: { tenantId: tenant.id, key: stage.key } },
-        create: { tenantId: tenant.id, ...stage },
-        update: { label: stage.label },
+    const existing = await prisma.funnelStage.findFirst({
+      where: { tenantId: tenant.id, orderIndex: stage.orderIndex },
+    });
+    if (existing) {
+      await prisma.funnelStage.update({
+        where: { id: existing.id },
+        data: { key: stage.key, label: stage.label, isWon: stage.isWon, isLost: stage.isLost },
       });
-      stagesOk++;
-    } catch { /* já existe com outro order_index, ignora */ }
+    } else {
+      await prisma.funnelStage.create({ data: { tenantId: tenant.id, ...stage } });
+    }
   }
-  console.log(`✅ ${stagesOk}/${STAGES.length} etapas do funil processadas`);
+  console.log(`✅ ${STAGES.length} etapas do funil processadas`);
 
   // Cria lojas (ignora conflitos)
   let storesOk = 0;
