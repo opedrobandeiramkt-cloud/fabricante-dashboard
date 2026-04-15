@@ -71,6 +71,7 @@ model Lead {
   enteredAt            DateTime  @map("entered_at")
   closedAt             DateTime? @map("closed_at")
   firstResponseMinutes Int?      @map("first_response_minutes")
+  salespersonCrmId     String?   @map("salesperson_crm_id") // ID/email do agente Helena vinculado
   metadata             Json      @default("{}")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
@@ -81,6 +82,7 @@ model Lead {
   @@unique([tenantId, externalId])
   @@index([tenantId, storeId])
   @@index([tenantId, currentStageId])
+  @@index([tenantId, salespersonCrmId])
   @@map("leads")
 }
 
@@ -119,6 +121,8 @@ model User {
   role           String   @default("fabricante") // "admin" | "fabricante"
   storeIds       Json     @default("[]") @map("store_ids")
   avatarInitials String   @map("avatar_initials")
+  salesGoal      Int?     @map("sales_goal")    // meta mensal de vendas fechadas (vendedor)
+  crmUserId      String?  @map("crm_user_id")   // ID/email do agente no Helena CRM (vendedor)
   createdAt      DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])

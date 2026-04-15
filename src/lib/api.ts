@@ -1,5 +1,6 @@
 import type {
   FunnelStageData,
+  GoalData,
   KPIData,
   Period,
   StageTimeData,
@@ -25,23 +26,24 @@ async function apiFetch<T>(path: string, options?: RequestInit & { userId?: stri
   return res.json() as Promise<T>;
 }
 
-function buildParams(storeIds: string[], period: Period): string {
+function buildParams(storeIds: string[], period: Period, salesperson?: string): string {
   const params = new URLSearchParams({ period });
   if (storeIds.length > 0) params.set("storeIds", storeIds.join(","));
+  if (salesperson)         params.set("salesperson", salesperson);
   return params.toString();
 }
 
 export const api = {
-  kpis(storeIds: string[], period: Period): Promise<KPIData> {
-    return apiFetch(`/api/dashboard/kpis?${buildParams(storeIds, period)}`);
+  kpis(storeIds: string[], period: Period, salesperson?: string): Promise<KPIData> {
+    return apiFetch(`/api/dashboard/kpis?${buildParams(storeIds, period, salesperson)}`);
   },
 
-  funnel(storeIds: string[], period: Period): Promise<FunnelStageData[]> {
-    return apiFetch(`/api/dashboard/funnel?${buildParams(storeIds, period)}`);
+  funnel(storeIds: string[], period: Period, salesperson?: string): Promise<FunnelStageData[]> {
+    return apiFetch(`/api/dashboard/funnel?${buildParams(storeIds, period, salesperson)}`);
   },
 
-  trend(storeIds: string[], period: Period): Promise<TrendPoint[]> {
-    return apiFetch(`/api/dashboard/trend?${buildParams(storeIds, period)}`);
+  trend(storeIds: string[], period: Period, salesperson?: string): Promise<TrendPoint[]> {
+    return apiFetch(`/api/dashboard/trend?${buildParams(storeIds, period, salesperson)}`);
   },
 
   ranking(storeIds: string[], period: Period): Promise<StoreRankingRow[]> {
@@ -52,8 +54,14 @@ export const api = {
     return apiFetch("/api/dashboard/stores");
   },
 
-  stageTime(storeIds: string[], period: Period): Promise<StageTimeData[]> {
-    return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period)}`);
+  stageTime(storeIds: string[], period: Period, salesperson?: string): Promise<StageTimeData[]> {
+    return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period, salesperson)}`);
+  },
+
+  goal(storeId: string, salesperson: string): Promise<GoalData> {
+    const params = new URLSearchParams({ salesperson });
+    if (storeId) params.set("storeId", storeId);
+    return apiFetch(`/api/dashboard/goal?${params}`);
   },
 
   login(email: string, password: string): Promise<{ user: AppUser }> {
@@ -67,7 +75,7 @@ export const api = {
     return apiFetch("/api/auth/users", { userId: adminId });
   },
 
-  createUser(adminId: string, data: { name: string; email: string; password: string; role: string; storeIds: string[] }): Promise<{ user: AppUser }> {
+  createUser(adminId: string, data: { name: string; email: string; password: string; role: string; storeIds: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
     return apiFetch("/api/auth/users", {
       method: "POST",
       userId: adminId,
@@ -75,7 +83,7 @@ export const api = {
     });
   },
 
-  updateUser(adminId: string, id: string, data: { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] }): Promise<{ user: AppUser }> {
+  updateUser(adminId: string, id: string, data: { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
     return apiFetch(`/api/auth/users/${id}`, {
       method: "PUT",
       userId: adminId,

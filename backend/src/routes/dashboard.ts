@@ -14,15 +14,20 @@ function buildStoreFilter(storeIds: string[]) {
   return storeIds.length > 0 ? { storeId: { in: storeIds } } : {};
 }
 
+function buildSalespersonFilter(salesperson?: string) {
+  return salesperson ? { lead: { salespersonCrmId: salesperson } } : {};
+}
+
 const querySchema = {
   type: "object",
   properties: {
-    period:   { type: "string", enum: ["7d", "30d", "90d", "12m"], default: "30d" },
-    storeIds: { type: "string" }, // CSV: "id1,id2"
+    period:      { type: "string", enum: ["7d", "30d", "90d", "12m"], default: "30d" },
+    storeIds:    { type: "string" }, // CSV: "id1,id2"
+    salesperson: { type: "string" }, // crmUserId do vendedor
   },
 } as const;
 
-type DashboardQuery = { period?: Period; storeIds?: string };
+type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string };
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
 
@@ -46,21 +51,23 @@ export async function dashboardRoutes(app: FastifyInstance) {
     "/api/dashboard/kpis",
     { schema: { querystring: querySchema } },
     async (request, reply) => {
-      const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
-      const period   = (request.query.period ?? "30d") as Period;
-      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const tenant      = (request as unknown as Record<string, unknown>).tenant as { id: string };
+      const period      = (request.query.period ?? "30d") as Period;
+      const storeIds    = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const salesperson = request.query.salesperson;
 
       const { start, end }     = getPeriodRange(period);
       const { start: ps, end: pe } = getPreviousPeriodRange(period);
 
+      const spFilter  = buildSalespersonFilter(salesperson);
       const baseFilter    = { tenantId: tenant.id, ...buildStoreFilter(storeIds) };
       const periodFilter  = { occurredAt: { gte: start, lte: end } };
       const prevFilter    = { occurredAt: { gte: ps, lte: pe } };
 
       // Entradas no funil (fromStage = null) — leads únicos
       const [entryRows, prevEntryRows] = await Promise.all([
-        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
-        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, ...spFilter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  ...spFilter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
       ]);
       const entryCount     = entryRows.length;
       const prevEntryCount = prevEntryRows.length;
@@ -73,8 +80,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const wonStageIds = wonStages.map((s) => s.id);
 
       const [wonRows, prevWonRows] = await Promise.all([
-        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
-        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...periodFilter, ...spFilter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
+        prisma.leadEvent.findMany({ where: { ...baseFilter, ...prevFilter,  ...spFilter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
       ]);
       const wonCount     = wonRows.length;
       const prevWonCount = prevWonRows.length;
@@ -84,6 +91,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         where: {
           tenantId: tenant.id,
           ...buildStoreFilter(storeIds),
+          ...(salesperson ? { salespersonCrmId: salesperson } : {}),
           closedAt: { not: null, gte: start, lte: end },
         },
         select: { enteredAt: true, closedAt: true },
@@ -109,11 +117,13 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const [frLeads, prevFrLeads] = await Promise.all([
         prisma.lead.findMany({
           where: { tenantId: tenant.id, ...buildStoreFilter(storeIds),
+            ...(salesperson ? { salespersonCrmId: salesperson } : {}),
             firstResponseMinutes: { not: null }, enteredAt: { gte: start, lte: end } },
           select: { firstResponseMinutes: true },
         }),
         prisma.lead.findMany({
           where: { tenantId: tenant.id, ...buildStoreFilter(storeIds),
+            ...(salesperson ? { salespersonCrmId: salesperson } : {}),
             firstResponseMinutes: { not: null }, enteredAt: { gte: ps, lte: pe } },
           select: { firstResponseMinutes: true },
         }),
@@ -481,5 +491,47 @@ export async function dashboardRoutes(app: FastifyInstance) {
     await prisma.store.delete({ where: { id } });
 
     return reply.send({ ok: true });
+  });
+
+  // ── GET /api/dashboard/goal ──────────────────────────────────────────────────
+  app.get("/api/dashboard/goal", async (request, reply) => {
+    const tenant      = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const salesperson = (request.query as Record<string, string>).salesperson;
+    const storeId     = (request.query as Record<string, string>).storeId;
+
+    if (!salesperson) return reply.code(400).send({ error: "salesperson obrigatório" });
+
+    const vendedor = await prisma.user.findFirst({
+      where:  { tenantId: tenant.id, crmUserId: salesperson },
+      select: { salesGoal: true, name: true },
+    });
+
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const wonStages = await prisma.funnelStage.findMany({
+      where:  { tenantId: tenant.id, isWon: true },
+      select: { id: true },
+    });
+
+    const wonRows = await prisma.leadEvent.findMany({
+      where: {
+        tenantId:   tenant.id,
+        toStageId:  { in: wonStages.map((s) => s.id) },
+        occurredAt: { gte: start, lte: end },
+        lead:       { salespersonCrmId: salesperson },
+        ...(storeId ? { storeId } : {}),
+      },
+      distinct: ["leadId"],
+      select:   { leadId: true },
+    });
+
+    return reply.send({
+      wonDeals:   wonRows.length,
+      salesGoal:  vendedor?.salesGoal ?? 0,
+      name:       vendedor?.name ?? "",
+      monthLabel: now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+    });
   });
 }

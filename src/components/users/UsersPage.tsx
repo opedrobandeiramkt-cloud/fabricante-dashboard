@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCircle2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCircle2, UserRound } from "lucide-react";
 import { UserFormModal } from "./UserFormModal";
 import { useUsersContext } from "@/contexts/UsersContext";
 import type { UserFormData } from "@/hooks/useUsers";
@@ -35,6 +35,7 @@ export function UsersPage() {
 
   const adminCount     = users.filter((u) => u.role === "admin").length;
   const fabricanteCount = users.filter((u) => u.role === "fabricante").length;
+  const vendedorCount  = users.filter((u) => u.role === "vendedor").length;
 
   return (
     <div className="space-y-6">
@@ -49,6 +50,8 @@ export function UsersPage() {
             <span className="text-primary">{adminCount} admin</span>
             {" · "}
             <span className="text-[hsl(var(--success))]">{fabricanteCount} fabricante{fabricanteCount !== 1 ? "s" : ""}</span>
+            {" · "}
+            <span className="text-[hsl(var(--warning))]">{vendedorCount} vendedor{vendedorCount !== 1 ? "es" : ""}</span>
           </p>
         </div>
         <button
@@ -86,7 +89,7 @@ export function UsersPage() {
           <tbody className="divide-y divide-border">
             {filtered.map((u) => {
               const isSelf = u.id === currentUser?.id;
-              const storeNames = u.storeIds.length > 0
+              const storeNames = u.role !== "admin" && u.storeIds.length > 0
                 ? stores.filter((s) => u.storeIds.includes(s.id)).map((s) => s.name)
                 : null;
 
@@ -96,9 +99,9 @@ export function UsersPage() {
                   <td className="px-4 sm:px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                        u.role === "admin"
-                          ? "bg-primary/15 text-primary"
-                          : "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
+                        u.role === "admin"      ? "bg-primary/15 text-primary" :
+                        u.role === "vendedor"   ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" :
+                        "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
                       }`}>
                         {u.avatarInitials}
                       </div>
@@ -119,6 +122,10 @@ export function UsersPage() {
                     {u.role === "admin" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
                         <ShieldCheck className="h-3 w-3" /> Administrador
+                      </span>
+                    ) : u.role === "vendedor" ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))]">
+                        <UserRound className="h-3 w-3" /> Vendedor
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">

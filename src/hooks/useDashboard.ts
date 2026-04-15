@@ -10,6 +10,7 @@ import {
 import type {
   DashboardFilters,
   FunnelStageData,
+  GoalData,
   KPIData,
   StageTimeData,
   StoreRankingRow,
@@ -25,6 +26,7 @@ interface DashboardData {
   trend:       TrendPoint[];
   ranking:     StoreRankingRow[];
   stageTimes:  StageTimeData[];
+  goalData:    GoalData | null;
   loading:     boolean;
   error:       string | null;
 }
@@ -36,6 +38,7 @@ function getMockData(filters: DashboardFilters): Omit<DashboardData, "loading" |
     trend:      getTrendData(filters),
     ranking:    getStoreRanking(filters),
     stageTimes: getStageTimeData(filters),
+    goalData:   null,
   };
 }
 
@@ -61,18 +64,23 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
       return;
     }
 
-    const { storeIds, period } = filters;
+    const { storeIds, period, crmUserId } = filters;
 
     async function fetchAll(isPolling = false) {
       if (!isPolling) setLoading(true);
       setError(null);
 
-      const [kpis, funnel, trend, ranking, stageTimes] = await Promise.allSettled([
-        api.kpis(storeIds, period),
-        api.funnel(storeIds, period),
-        api.trend(storeIds, period),
+      const goalPromise = crmUserId
+        ? api.goal(storeIds[0] ?? "", crmUserId)
+        : Promise.resolve(null);
+
+      const [kpis, funnel, trend, ranking, stageTimes, goal] = await Promise.allSettled([
+        api.kpis(storeIds, period, crmUserId),
+        api.funnel(storeIds, period, crmUserId),
+        api.trend(storeIds, period, crmUserId),
         api.ranking(storeIds, period),
-        api.stageTime(storeIds, period),
+        api.stageTime(storeIds, period, crmUserId),
+        goalPromise,
       ]);
 
       if (!mountedRef.current) return;
@@ -82,6 +90,7 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
         trend:      trend.status      === "fulfilled" ? trend.value      : [],
         ranking:    ranking.status    === "fulfilled" ? ranking.value    : [],
         stageTimes: stageTimes.status === "fulfilled" ? stageTimes.value : [],
+        goalData:   goal.status       === "fulfilled" ? goal.value       : null,
       });
       if (!isPolling && mountedRef.current) setLoading(false);
     }

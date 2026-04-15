@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { X, UserCircle2, Save, Eye, EyeOff, ShieldCheck, Store } from "lucide-react";
+import { X, UserCircle2, Save, Eye, EyeOff, ShieldCheck, Store, UserRound } from "lucide-react";
 import { useStores } from "@/contexts/StoresContext";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AppUser } from "@/lib/auth-types";
 import type { UserFormData } from "@/hooks/useUsers";
 
@@ -11,7 +12,7 @@ interface UserFormModalProps {
 }
 
 const EMPTY: UserFormData = {
-  name: "", email: "", role: "fabricante", storeIds: [], password: "",
+  name: "", email: "", role: "fabricante", storeIds: [], password: "", salesGoal: undefined, crmUserId: "",
 };
 
 export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
@@ -21,12 +22,21 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [errors,   setErrors]   = useState<Partial<Record<keyof UserFormData, string>>>({});
   const { stores } = useStores();
+  const { isAdmin } = useAuth();
 
   const isNew = !user;
 
   useEffect(() => {
     if (user) {
-      setForm({ name: user.name, email: user.email, role: user.role, storeIds: user.storeIds, password: "" });
+      setForm({
+        name:      user.name,
+        email:     user.email,
+        role:      user.role,
+        storeIds:  user.storeIds,
+        password:  "",
+        salesGoal: user.salesGoal ?? undefined,
+        crmUserId: user.crmUserId ?? "",
+      });
     } else {
       setForm(EMPTY);
     }
@@ -53,7 +63,7 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "E-mail inválido";
     if (isNew && !form.password) e.password = "Senha obrigatória";
     if (isNew && form.password && form.password.length < 6) e.password = "Mínimo 6 caracteres";
-    if (form.role === "fabricante" && form.storeIds.length === 0)
+    if ((form.role === "fabricante" || form.role === "vendedor") && form.storeIds.length === 0)
       e.storeIds = "Selecione ao menos uma loja";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -143,19 +153,31 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
                   icon={<Store className="h-4 w-4" />}
                   title="Fabricante"
                   description="Vê apenas suas lojas"
+                  accent="success"
                 />
                 <RoleOption
-                  selected={form.role === "admin"}
-                  onClick={() => set("role", "admin")}
-                  icon={<ShieldCheck className="h-4 w-4" />}
-                  title="Administrador"
-                  description="Acesso total ao sistema"
+                  selected={form.role === "vendedor"}
+                  onClick={() => set("role", "vendedor")}
+                  icon={<UserRound className="h-4 w-4" />}
+                  title="Vendedor"
+                  description="Vê apenas suas métricas"
+                  accent="warning"
                 />
+                {isAdmin && (
+                  <RoleOption
+                    selected={form.role === "admin"}
+                    onClick={() => set("role", "admin")}
+                    icon={<ShieldCheck className="h-4 w-4" />}
+                    title="Administrador"
+                    description="Acesso total ao sistema"
+                    accent="primary"
+                  />
+                )}
               </div>
             </div>
 
-            {/* Lojas — apenas para fabricante */}
-            {form.role === "fabricante" && (
+            {/* Lojas — para fabricante e vendedor */}
+            {(form.role === "fabricante" || form.role === "vendedor") && (
               <Field label="Lojas sob responsabilidade" required error={errors.storeIds}>
                 <div className="space-y-2 mt-1">
                   {stores.map((store) => {
@@ -182,6 +204,31 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
                 </div>
                 {errors.storeIds && <p className="text-xs text-[hsl(var(--danger))] mt-1">{errors.storeIds}</p>}
               </Field>
+            )}
+
+            {/* Campos exclusivos do vendedor */}
+            {form.role === "vendedor" && (
+              <>
+                <Field label="CRM User ID" hint="E-mail ou ID do agente no Helena CRM">
+                  <input
+                    type="text"
+                    value={form.crmUserId ?? ""}
+                    onChange={(e) => set("crmUserId", e.target.value)}
+                    placeholder="agente@loja.com.br"
+                    className={inputCls(false)}
+                  />
+                </Field>
+                <Field label="Meta mensal de vendas" hint="Nº de piscinas vendidas por mês">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.salesGoal ?? ""}
+                    onChange={(e) => set("salesGoal", e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder="ex: 5"
+                    className={inputCls(false)}
+                  />
+                </Field>
+              </>
             )}
 
           </div>
@@ -234,17 +281,23 @@ function Field({ label, required, hint, error, children }: {
   );
 }
 
-function RoleOption({ selected, onClick, icon, title, description }: {
+function RoleOption({ selected, onClick, icon, title, description, accent = "primary" }: {
   selected: boolean; onClick: () => void; icon: React.ReactNode; title: string; description: string;
+  accent?: "primary" | "success" | "warning";
 }) {
+  const colorVar = accent === "success" ? "var(--success)" : accent === "warning" ? "var(--warning)" : "var(--primary)";
   return (
     <button type="button" onClick={onClick}
       className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-colors ${
         selected
-          ? "border-primary bg-[hsl(var(--primary)/0.08)]"
+          ? "border-[hsl(var(--primary)/0.4)] bg-[hsl(var(--primary)/0.06)]"
           : "border-border hover:border-border/80 hover:bg-secondary/30"
-      }`}>
-      <div className={`flex items-center gap-2 font-medium text-sm ${selected ? "text-primary" : "text-foreground"}`}>
+      }`}
+      style={selected ? { borderColor: `hsl(${colorVar} / 0.5)`, background: `hsl(${colorVar} / 0.06)` } : undefined}
+    >
+      <div className="flex items-center gap-2 font-medium text-sm"
+        style={{ color: selected ? `hsl(${colorVar})` : undefined }}
+      >
         {icon}{title}
       </div>
       <p className="text-xs text-muted-foreground">{description}</p>

@@ -9,20 +9,28 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const FROM_EMAIL   = process.env.FROM_EMAIL    ?? "noreply@igui.com.br";
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
 
-function userToDto(user: { id: string; name: string; email: string; role: string; storeIds: unknown; avatarInitials: string }) {
+function userToDto(user: { id: string; name: string; email: string; role: string; storeIds: unknown; avatarInitials: string; salesGoal?: number | null; crmUserId?: string | null }) {
   return {
     id:             user.id,
     name:           user.name,
     email:          user.email,
-    role:           user.role as "admin" | "fabricante",
+    role:           user.role as "admin" | "fabricante" | "vendedor",
     storeIds:       (user.storeIds as string[]) ?? [],
     avatarInitials: user.avatarInitials,
+    salesGoal:      user.salesGoal ?? null,
+    crmUserId:      user.crmUserId ?? null,
   };
 }
 
 async function resolveAdminUser(tenantId: string, userId: string) {
   const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
   if (!user || user.role !== "admin") return null;
+  return user;
+}
+
+async function resolveFabricanteOrAdmin(tenantId: string, userId: string) {
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+  if (!user || (user.role !== "admin" && user.role !== "fabricante")) return null;
   return user;
 }
 
@@ -53,35 +61,45 @@ export async function authRoutes(app: FastifyInstance) {
 
   // GET /api/auth/users ───────────────────────────────────────────────────────
   app.get("/api/auth/users", async (req, reply) => {
-    const tenantSlug = req.headers["x-tenant-slug"] as string;
+    const tenantSlug  = req.headers["x-tenant-slug"] as string;
     const requesterId = req.headers["x-user-id"] as string;
 
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
     if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
 
-    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
-      return reply.code(403).send({ error: "Acesso negado." });
-    }
+    const requester = await resolveFabricanteOrAdmin(tenant.id, requesterId);
+    if (!requester) return reply.code(403).send({ error: "Acesso negado." });
 
-    const users = await prisma.user.findMany({
+    const allUsers = await prisma.user.findMany({
       where:   { tenantId: tenant.id },
       orderBy: { createdAt: "asc" },
     });
+
+    // Fabricante vê apenas os usuários das suas lojas
+    const users = requester.role === "fabricante"
+      ? allUsers.filter((u) =>
+          (u.storeIds as string[]).some((id) => (requester.storeIds as string[]).includes(id))
+        )
+      : allUsers;
 
     return reply.send(users.map(userToDto));
   });
 
   // POST /api/auth/users ──────────────────────────────────────────────────────
   app.post("/api/auth/users", async (req, reply) => {
-    const tenantSlug = req.headers["x-tenant-slug"] as string;
+    const tenantSlug  = req.headers["x-tenant-slug"] as string;
     const requesterId = req.headers["x-user-id"] as string;
-    const body = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] };
+    const body = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string };
 
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
     if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
 
-    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
-      return reply.code(403).send({ error: "Acesso negado." });
+    const requester = await resolveFabricanteOrAdmin(tenant.id, requesterId);
+    if (!requester) return reply.code(403).send({ error: "Acesso negado." });
+
+    // Fabricante só pode criar vendedores
+    if (requester.role === "fabricante" && body.role !== "vendedor") {
+      return reply.code(403).send({ error: "Fabricante só pode criar vendedores." });
     }
 
     if (!body.name || !body.email || !body.password || !body.role) {
@@ -105,6 +123,8 @@ export async function authRoutes(app: FastifyInstance) {
         role:           body.role,
         storeIds:       body.role === "admin" ? [] : (body.storeIds ?? []),
         avatarInitials,
+        salesGoal:      body.salesGoal ?? null,
+        crmUserId:      body.crmUserId?.toLowerCase().trim() ?? null,
       },
     });
 
@@ -116,28 +136,36 @@ export async function authRoutes(app: FastifyInstance) {
     const tenantSlug  = req.headers["x-tenant-slug"] as string;
     const requesterId = req.headers["x-user-id"] as string;
     const { id }      = req.params;
-    const body        = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[] };
+    const body        = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string };
 
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
     if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
 
-    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
-      return reply.code(403).send({ error: "Acesso negado." });
-    }
+    const requester = await resolveFabricanteOrAdmin(tenant.id, requesterId);
+    if (!requester) return reply.code(403).send({ error: "Acesso negado." });
 
     const existing = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
+
+    // Fabricante só pode editar vendedores das suas lojas
+    if (requester.role === "fabricante") {
+      if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
+      const sharedStore = (existing.storeIds as string[]).some((s) => (requester.storeIds as string[]).includes(s));
+      if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });
+    }
 
     const avatarInitials = body.name
       ? body.name.split(" ").slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("")
       : existing.avatarInitials;
 
     const updateData: Record<string, unknown> = {
-      name:           body.name           ?? existing.name,
-      email:          body.email          ? body.email.toLowerCase().trim() : existing.email,
-      role:           body.role           ?? existing.role,
+      name:           body.name  ?? existing.name,
+      email:          body.email ? body.email.toLowerCase().trim() : existing.email,
+      role:           body.role  ?? existing.role,
       storeIds:       body.role === "admin" ? [] : (body.storeIds ?? existing.storeIds),
       avatarInitials,
+      salesGoal:      body.salesGoal !== undefined ? (body.salesGoal ?? null) : existing.salesGoal,
+      crmUserId:      body.crmUserId !== undefined ? (body.crmUserId?.toLowerCase().trim() ?? null) : existing.crmUserId,
     };
 
     if (body.password) {
@@ -157,12 +185,18 @@ export async function authRoutes(app: FastifyInstance) {
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
     if (!tenant) return reply.code(404).send({ error: "Tenant não encontrado." });
 
-    if (!requesterId || !(await resolveAdminUser(tenant.id, requesterId))) {
-      return reply.code(403).send({ error: "Acesso negado." });
-    }
+    const requester = await resolveFabricanteOrAdmin(tenant.id, requesterId);
+    if (!requester) return reply.code(403).send({ error: "Acesso negado." });
 
     const existing = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
+
+    // Fabricante só pode deletar vendedores das suas lojas
+    if (requester.role === "fabricante") {
+      if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
+      const sharedStore = (existing.storeIds as string[]).some((s) => (requester.storeIds as string[]).includes(s));
+      if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });
+    }
 
     if (existing.role === "admin") {
       const adminCount = await prisma.user.count({ where: { tenantId: tenant.id, role: "admin" } });

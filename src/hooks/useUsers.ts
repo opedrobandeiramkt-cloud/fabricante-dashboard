@@ -26,6 +26,7 @@ function loadPasswords(): Record<string, string> {
     "user-fab-pr":  "igui2024",
     "user-fab-mg":  "igui2024",
     "user-fab-rj":  "igui2024",
+    "user-v1":      "igui2024",
   };
 }
 
@@ -42,11 +43,13 @@ function generateId() {
 }
 
 export type UserFormData = {
-  name:     string;
-  email:    string;
-  role:     UserRole;
-  storeIds: string[];
-  password: string;
+  name:       string;
+  email:      string;
+  role:       UserRole;
+  storeIds:   string[];
+  password:   string;
+  salesGoal?: number;
+  crmUserId?: string;
 };
 
 export function useUsers(adminId?: string) {
@@ -83,6 +86,8 @@ export function useUsers(adminId?: string) {
         .slice(0, 2)
         .map((w) => w[0].toUpperCase())
         .join(""),
+      salesGoal: data.salesGoal ?? null,
+      crmUserId: data.crmUserId ?? null,
     };
     const newUsers     = [...users, newUser];
     const newPasswords = { ...passwords, [newUser.id]: data.password };
@@ -113,6 +118,8 @@ export function useUsers(adminId?: string) {
           .slice(0, 2)
           .map((w) => w[0].toUpperCase())
           .join(""),
+        salesGoal: data.salesGoal ?? u.salesGoal ?? null,
+        crmUserId: data.crmUserId ?? u.crmUserId ?? null,
       }
     );
     setUsers(newUsers);

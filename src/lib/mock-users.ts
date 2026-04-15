@@ -48,6 +48,16 @@ export const MOCK_USERS: AppUser[] = [
     storeIds:       ["loja-05"], // Rio de Janeiro
     avatarInitials: "FC",
   },
+  {
+    id:             "user-v1",
+    name:           "João Vendedor",
+    email:          "joao.vendedor@igui.com.br",
+    role:           "vendedor",
+    storeIds:       ["loja-01"],
+    avatarInitials: "JV",
+    salesGoal:      5,
+    crmUserId:      "joao.vendedor@igui.com.br",
+  },
 ];
 
 /** Senha mock por user id — apenas para simulação local */
@@ -57,6 +67,7 @@ const MOCK_PASSWORDS: Record<string, string> = {
   "user-fab-pr":  "igui2024",
   "user-fab-mg":  "igui2024",
   "user-fab-rj":  "igui2024",
+  "user-v1":      "igui2024",
 };
 
 export function authenticateUser(

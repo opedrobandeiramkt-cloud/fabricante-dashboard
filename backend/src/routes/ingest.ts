@@ -144,6 +144,8 @@ export async function ingestRoutes(app: FastifyInstance) {
             },
           });
 
+          const salespersonCrmId = (body.metadata?.crmUserId as string | undefined) ?? null;
+
           const lead = await tx.lead.upsert({
             where: {
               tenantId_externalId: {
@@ -152,17 +154,19 @@ export async function ingestRoutes(app: FastifyInstance) {
               },
             },
             create: {
-              tenantId:       tenant.id,
-              storeId:        store.id,
-              externalId:     body.lead_external_id,
-              currentStageId: toStage.id,
-              enteredAt:      occurredAt,
-              closedAt:       toStage.isWon || toStage.isLost ? occurredAt : null,
-              metadata:       (body.metadata ?? {}) as object,
+              tenantId:         tenant.id,
+              storeId:          store.id,
+              externalId:       body.lead_external_id,
+              currentStageId:   toStage.id,
+              enteredAt:        occurredAt,
+              closedAt:         toStage.isWon || toStage.isLost ? occurredAt : null,
+              salespersonCrmId,
+              metadata:         (body.metadata ?? {}) as object,
             },
             update: {
               currentStageId: toStage.id,
               closedAt:       toStage.isWon || toStage.isLost ? occurredAt : null,
+              ...(salespersonCrmId ? { salespersonCrmId } : {}),
             },
           });
 

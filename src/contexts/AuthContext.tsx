@@ -13,6 +13,7 @@ interface AuthContextValue {
   login:           (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout:          () => void;
   isAdmin:         boolean;
+  isVendedor:      boolean;
   /** IDs de loja que o usuário tem permissão. [] = todas (admin). */
   allowedStoreIds: string[];
 }
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const isAdmin         = user?.role === "admin";
+  const isVendedor      = user?.role === "vendedor";
   const allowedStoreIds = user?.storeIds ?? [];
 
   return (
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         isAdmin,
+        isVendedor,
         allowedStoreIds,
       }}
     >

@@ -99,11 +99,19 @@ export interface StageTimeData {
   isBottleneck: boolean;
 }
 
+export interface GoalData {
+  wonDeals:   number;
+  salesGoal:  number;
+  name:       string;
+  monthLabel: string;
+}
+
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export type Period = "7d" | "30d" | "90d" | "12m";
 
 export interface DashboardFilters {
-  storeIds: string[]; // [] = todas
-  period: Period;
+  storeIds:  string[]; // [] = todas
+  period:    Period;
+  crmUserId?: string;  // se presente, filtra por vendedor
 }

@@ -2,12 +2,14 @@ import { useState, useMemo, useEffect } from "react";
 import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download, Menu, X } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
-import { KPICards }       from "@/components/dashboard/KPICards";
-import { FunnelChart }    from "@/components/dashboard/FunnelChart";
-import { TrendChart }     from "@/components/dashboard/TrendChart";
-import { StoreRanking }   from "@/components/dashboard/StoreRanking";
-import { StoreFilter }    from "@/components/dashboard/StoreFilter";
-import { StageTimeChart } from "@/components/dashboard/StageTimeChart";
+import { KPICards }            from "@/components/dashboard/KPICards";
+import { FunnelChart }         from "@/components/dashboard/FunnelChart";
+import { TrendChart }          from "@/components/dashboard/TrendChart";
+import { StoreRanking }        from "@/components/dashboard/StoreRanking";
+import { StoreFilter }         from "@/components/dashboard/StoreFilter";
+import { StageTimeChart }      from "@/components/dashboard/StageTimeChart";
+import { SalesGoalProgress }   from "@/components/dashboard/SalesGoalProgress";
+import { VendedorDashboard }   from "@/components/dashboard/VendedorDashboard";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
 import { LoginPage }           from "@/components/auth/LoginPage";
@@ -40,13 +42,13 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  const { user, isAdmin, allowedStoreIds, logout } = useAuth();
+  const { user, isAdmin, isVendedor, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
   const { reloadUsers } = useUsersContext();
 
-  // Carrega usuários da API quando admin faz login
+  // Carrega usuários da API quando admin ou fabricante faz login
   useEffect(() => {
-    if (user?.role === "admin" && user.id) {
+    if ((user?.role === "admin" || user?.role === "fabricante") && user.id) {
       reloadUsers(user.id);
     }
   }, [user?.id]);
@@ -85,11 +87,15 @@ function AuthenticatedApp() {
   );
 
   const filters = useMemo(
-    () => ({ storeIds: effectiveStoreIds, period }),
-    [effectiveStoreIds, period]
+    () => ({
+      storeIds:  effectiveStoreIds,
+      period,
+      ...(isVendedor && user?.crmUserId ? { crmUserId: user.crmUserId } : {}),
+    }),
+    [effectiveStoreIds, period, isVendedor, user?.crmUserId]
   );
 
-  const { kpis, funnel, trend, ranking, stageTimes } = useDashboard(filters);
+  const { kpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
 
   // Mostra apenas lojas ativas; aplica nome/cidade local quando disponível
   const storeMap = new Map(stores.map((s) => [s.id, s]));
@@ -143,9 +149,11 @@ function AuthenticatedApp() {
             <NavTab active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
               icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
             />
-            <NavTab active={page === "stores"} onClick={() => handlePageChange("stores")}
-              icon={<Store className="h-4 w-4" />} label="Lojas" />
-            {isAdmin && (
+            {!isVendedor && (
+              <NavTab active={page === "stores"} onClick={() => handlePageChange("stores")}
+                icon={<Store className="h-4 w-4" />} label="Lojas" />
+            )}
+            {(isAdmin || (!isVendedor && user?.role === "fabricante")) && (
               <NavTab active={page === "users"} onClick={() => handlePageChange("users")}
                 icon={<Users className="h-4 w-4" />} label="Usuários" />
             )}
@@ -153,8 +161,8 @@ function AuthenticatedApp() {
 
           {/* Direita */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Filtros desktop — apenas no dashboard */}
-            {page === "dashboard" && (
+            {/* Filtros desktop — apenas no dashboard e não para vendedor */}
+            {page === "dashboard" && !isVendedor && (
               <>
                 <div className="hidden md:block">
                   <StoreFilter
@@ -208,9 +216,11 @@ function AuthenticatedApp() {
                     <p className="text-sm font-semibold text-foreground">{user?.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     <span className={`inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      isAdmin ? "bg-primary/15 text-primary" : "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
+                      isAdmin ? "bg-primary/15 text-primary" :
+                      isVendedor ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" :
+                      "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
                     }`}>
-                      {isAdmin ? <><ShieldCheck className="h-2.5 w-2.5" /> Administrador</> : "Fabricante"}
+                      {isAdmin ? <><ShieldCheck className="h-2.5 w-2.5" /> Administrador</> : isVendedor ? "Vendedor" : "Fabricante"}
                     </span>
                   </div>
                   {!isAdmin && (
@@ -239,8 +249,8 @@ function AuthenticatedApp() {
           </div>
         </div>
 
-        {/* Barra de filtros mobile — apenas no dashboard */}
-        {page === "dashboard" && (
+        {/* Barra de filtros mobile — apenas no dashboard e não para vendedor */}
+        {page === "dashboard" && !isVendedor && (
           <div className="md:hidden border-t border-border flex flex-col">
             {/* Linha 1: StoreFilter — sem overflow para o dropdown funcionar */}
             <div className="px-4 pt-2 pb-1">
@@ -281,10 +291,12 @@ function AuthenticatedApp() {
               <MobileNavItem active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
                 icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
               />
-              <MobileNavItem active={page === "stores"} onClick={() => handlePageChange("stores")}
-                icon={<Store className="h-4 w-4" />} label="Lojas"
-              />
-              {isAdmin && (
+              {!isVendedor && (
+                <MobileNavItem active={page === "stores"} onClick={() => handlePageChange("stores")}
+                  icon={<Store className="h-4 w-4" />} label="Lojas"
+                />
+              )}
+              {(isAdmin || (!isVendedor && user?.role === "fabricante")) && (
                 <MobileNavItem active={page === "users"} onClick={() => handlePageChange("users")}
                   icon={<Users className="h-4 w-4" />} label="Usuários"
                 />
@@ -294,29 +306,36 @@ function AuthenticatedApp() {
         )}
       </header>
 
+      {/* Barra de meta do vendedor — logo abaixo do header */}
+      {isVendedor && goalData && <SalesGoalProgress goalData={goalData} />}
+
       {/* Conteúdo */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {page === "dashboard" ? (
-          <div className="space-y-4 sm:space-y-6">
-            {!isAdmin && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
-                <Store className="h-4 w-4 text-primary flex-shrink-0" />
-                <span className="text-muted-foreground">
-                  Visualizando dados de{" "}
-                  <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
-                  sob sua responsabilidade.
-                </span>
-              </div>
-            )}
+          isVendedor ? (
+            <VendedorDashboard kpis={kpis} />
+          ) : (
+            <div className="space-y-4 sm:space-y-6">
+              {!isAdmin && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
+                  <Store className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    Visualizando dados de{" "}
+                    <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
+                    sob sua responsabilidade.
+                  </span>
+                </div>
+              )}
 
-            <KPICards data={kpis} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <FunnelChart data={funnel} />
-              <TrendChart  data={trend}  />
+              <KPICards data={kpis} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <FunnelChart data={funnel} />
+                <TrendChart  data={trend}  />
+              </div>
+              <StageTimeChart data={stageTimes} />
+              <StoreRanking   data={filteredRanking} />
             </div>
-            <StageTimeChart data={stageTimes} />
-            <StoreRanking   data={filteredRanking} />
-          </div>
+          )
         ) : page === "stores" ? (
           <StoresPage readOnly={!isAdmin} />
         ) : (
