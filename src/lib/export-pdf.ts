@@ -10,6 +10,14 @@ function deltaStr(v: number) {
   return `${v >= 0 ? "+" : ""}${v}%`;
 }
 
+function formatResponseTime(minutes: number): string {
+  if (minutes <= 0) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 export function exportDashboardPDF(params: {
   period:    string;
   storeLabel: string;
@@ -44,6 +52,7 @@ export function exportDashboardPDF(params: {
       <td class="num">${formatBRL(r.revenue)}</td>
       <td class="num">${formatBRL(r.avgTicket)}</td>
       <td class="num">${r.avgCycleDays}d</td>
+      <td class="num">${formatResponseTime(r.avgFirstResponseMinutes)}</td>
     </tr>
   `).join("");
 
@@ -137,6 +146,11 @@ export function exportDashboardPDF(params: {
         <div class="value">${kpis.avgCycleDays} dias</div>
         <div class="delta">meta: até 45 dias</div>
       </div>
+      <div class="kpi">
+        <div class="label">Tempo de 1ª Resposta</div>
+        <div class="value">${formatResponseTime(kpis.avgFirstResponseMinutes)}</div>
+        <div class="delta ${(-kpis.avgFirstResponseDelta) >= 0 ? "pos" : "neg"}">${deltaStr(-kpis.avgFirstResponseDelta)} vs. período anterior</div>
+      </div>
     </div>
   </div>
 
@@ -149,7 +163,8 @@ export function exportDashboardPDF(params: {
     </table>
   </div>
 
-  <!-- Ranking -->
+  <!-- Ranking (oculto quando apenas uma loja selecionada) -->
+  ${ranking.length > 1 ? `
   <div class="section">
     <h2>Ranking de Lojas</h2>
     <table>
@@ -162,11 +177,13 @@ export function exportDashboardPDF(params: {
           <th class="num">Faturamento</th>
           <th class="num">Ticket Médio</th>
           <th class="num">Ciclo</th>
+          <th class="num">1ª Resposta</th>
         </tr>
       </thead>
       <tbody>${rankingRows}</tbody>
     </table>
   </div>
+  ` : ""}
 
   <!-- Alertas -->
   <div class="section">
