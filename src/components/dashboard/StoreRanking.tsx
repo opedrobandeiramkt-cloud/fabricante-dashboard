@@ -2,6 +2,14 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { StoreRankingRow } from "@/lib/types";
 
+function formatResponseTime(minutes: number): string {
+  if (minutes <= 0) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 function formatBRL(value: number): string {
   if (value >= 1_000_000) {
     return `R$ ${(value / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
@@ -99,6 +107,7 @@ export function StoreRanking({ data }: StoreRankingProps) {
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Faturamento</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ticket Médio</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ciclo Médio</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">1ª Resposta</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 hidden md:table-cell">Tendência</th>
             </tr>
           </thead>
@@ -146,6 +155,9 @@ export function StoreRanking({ data }: StoreRankingProps) {
                 </td>
                 <td className="py-3 pr-4 text-right text-muted-foreground hidden lg:table-cell">
                   {row.avgCycleDays} dias
+                </td>
+                <td className="py-3 pr-4 text-right text-muted-foreground hidden lg:table-cell">
+                  {formatResponseTime(row.avgFirstResponseMinutes)}
                 </td>
                 <td className="py-3 text-right hidden md:table-cell">
                   <div className="flex items-center justify-end gap-1">

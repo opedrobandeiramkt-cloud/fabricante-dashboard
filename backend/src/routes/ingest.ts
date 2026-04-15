@@ -187,6 +187,24 @@ export async function ingestRoutes(app: FastifyInstance) {
             },
           });
 
+          // Calcula tempo de 1ª resposta quando o lead sai de lead_capturado pela 1ª vez
+          const fromStageObj = fromStage
+            ?? (resolvedFromStageId
+                  ? await tx.funnelStage.findUnique({ where: { id: resolvedFromStageId } })
+                  : null);
+
+          if (
+            fromStageObj?.key === "lead_capturado" &&
+            existingLead !== null &&
+            existingLead.firstResponseMinutes === null
+          ) {
+            const diffMs = occurredAt.getTime() - lead.enteredAt.getTime();
+            await tx.lead.update({
+              where: { id: lead.id },
+              data:  { firstResponseMinutes: Math.round(diffMs / 60_000) },
+            });
+          }
+
           return { eventId: event.id, leadId: lead.id };
         });
 

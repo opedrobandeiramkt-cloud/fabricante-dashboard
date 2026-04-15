@@ -68,9 +68,10 @@ model Lead {
   storeId        String    @map("store_id")
   externalId     String    @map("external_id")
   currentStageId String?   @map("current_stage_id")
-  enteredAt      DateTime  @map("entered_at")
-  closedAt       DateTime? @map("closed_at")
-  metadata       Json      @default("{}")
+  enteredAt            DateTime  @map("entered_at")
+  closedAt             DateTime? @map("closed_at")
+  firstResponseMinutes Int?      @map("first_response_minutes")
+  metadata             Json      @default("{}")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   store        Store        @relation(fields: [storeId], references: [id])

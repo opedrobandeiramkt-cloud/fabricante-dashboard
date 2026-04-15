@@ -105,19 +105,42 @@ export async function dashboardRoutes(app: FastifyInstance) {
         ? parseFloat(((prevWonCount / prevEntryCount) * 100).toFixed(1))
         : 0;
 
+      // Tempo médio de 1ª resposta
+      const [frLeads, prevFrLeads] = await Promise.all([
+        prisma.lead.findMany({
+          where: { tenantId: tenant.id, ...buildStoreFilter(storeIds),
+            firstResponseMinutes: { not: null }, enteredAt: { gte: start, lte: end } },
+          select: { firstResponseMinutes: true },
+        }),
+        prisma.lead.findMany({
+          where: { tenantId: tenant.id, ...buildStoreFilter(storeIds),
+            firstResponseMinutes: { not: null }, enteredAt: { gte: ps, lte: pe } },
+          select: { firstResponseMinutes: true },
+        }),
+      ]);
+
+      const avgFirstResponseMinutes = frLeads.length
+        ? Math.round(frLeads.reduce((s, l) => s + l.firstResponseMinutes!, 0) / frLeads.length)
+        : 0;
+      const prevAvgFirstResponse = prevFrLeads.length
+        ? Math.round(prevFrLeads.reduce((s, l) => s + l.firstResponseMinutes!, 0) / prevFrLeads.length)
+        : 0;
+
       return reply.send({
-        totalLeads:           entryCount,
-        totalLeadsDelta:      delta(entryCount, prevEntryCount),
+        totalLeads:                entryCount,
+        totalLeadsDelta:           delta(entryCount, prevEntryCount),
         totalConversion,
-        totalConversionDelta: parseFloat((totalConversion - prevConversion).toFixed(1)),
-        wonDeals:             wonCount,
-        wonDealsDelta:        delta(wonCount, prevWonCount),
+        totalConversionDelta:      parseFloat((totalConversion - prevConversion).toFixed(1)),
+        wonDeals:                  wonCount,
+        wonDealsDelta:             delta(wonCount, prevWonCount),
         avgCycleDays,
-        avgCycleDelta:        0,
-        totalRevenue:         0,
-        totalRevenueDelta:    0,
-        avgTicket:            0,
-        avgTicketDelta:       0,
+        avgCycleDelta:             0,
+        totalRevenue:              0,
+        totalRevenueDelta:         0,
+        avgTicket:                 0,
+        avgTicketDelta:            0,
+        avgFirstResponseMinutes,
+        avgFirstResponseDelta:     delta(avgFirstResponseMinutes, prevAvgFirstResponse),
       });
     }
   );
@@ -274,12 +297,21 @@ export async function dashboardRoutes(app: FastifyInstance) {
             occurredAt: { gte: start, lte: end },
           };
 
-          const [leadRows, wonRows] = await Promise.all([
+          const [leadRows, wonRows, frLeads] = await Promise.all([
             prisma.leadEvent.findMany({ where: { ...filter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
             prisma.leadEvent.findMany({ where: { ...filter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
+            prisma.lead.findMany({
+              where: { tenantId: tenant.id, storeId: store.id,
+                firstResponseMinutes: { not: null }, enteredAt: { gte: start, lte: end } },
+              select: { firstResponseMinutes: true },
+            }),
           ]);
           const leads    = leadRows.length;
           const wonDeals = wonRows.length;
+
+          const avgFirstResponseMinutes = frLeads.length
+            ? Math.round(frLeads.reduce((s, l) => s + l.firstResponseMinutes!, 0) / frLeads.length)
+            : 0;
 
           return {
             store: {
@@ -290,11 +322,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
             },
             leads,
             wonDeals,
-            conversion:   leads > 0 ? parseFloat(((wonDeals / leads) * 100).toFixed(1)) : 0,
-            revenue:      0,
-            avgTicket:    0,
-            avgCycleDays: 0,
-            trend:        [0, 0, 0, 0, 0, 0, 0],
+            conversion:              leads > 0 ? parseFloat(((wonDeals / leads) * 100).toFixed(1)) : 0,
+            revenue:                 0,
+            avgTicket:               0,
+            avgCycleDays:            0,
+            avgFirstResponseMinutes,
+            trend:                   [0, 0, 0, 0, 0, 0, 0],
           };
         })
       );

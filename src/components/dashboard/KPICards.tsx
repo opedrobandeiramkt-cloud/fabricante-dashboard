@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Users, Trophy, Timer, BarChart3, CircleDollarSign, Banknote } from "lucide-react";
+import { TrendingUp, TrendingDown, Users, Trophy, Timer, BarChart3, CircleDollarSign, Banknote, Zap } from "lucide-react";
 import type { KPIData } from "@/lib/types";
 
 interface KPICardsProps {
@@ -63,6 +63,14 @@ function KPICard({ title, value, delta, deltaLabel, icon, accent = "primary", hi
   );
 }
 
+function formatResponseTime(minutes: number): string {
+  if (minutes <= 0) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 function formatBRL(value: number): string {
   if (value >= 1_000_000) {
     return `R$ ${(value / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
@@ -75,7 +83,7 @@ function formatBRL(value: number): string {
 
 export function KPICards({ data }: KPICardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <KPICard
         title="Total de Leads"
         value={data.totalLeads.toLocaleString("pt-BR")}
@@ -119,6 +127,14 @@ export function KPICards({ data }: KPICardsProps) {
         delta={-data.avgCycleDelta}
         deltaLabel=" dias"
         icon={<Timer className="h-4 w-4" />}
+        accent="warning"
+      />
+      <KPICard
+        title="Tempo de 1ª Resposta"
+        value={formatResponseTime(data.avgFirstResponseMinutes)}
+        delta={-data.avgFirstResponseDelta}
+        deltaLabel=" min"
+        icon={<Zap className="h-4 w-4" />}
         accent="warning"
       />
     </div>

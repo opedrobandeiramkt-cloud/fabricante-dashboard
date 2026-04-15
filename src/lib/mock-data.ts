@@ -38,6 +38,15 @@ const STORE_AVG_TICKET: Record<string, number> = {
   "loja-05": 72000,
 };
 
+/** Tempo médio de 1ª resposta em minutos por loja */
+const STORE_FIRST_RESPONSE_MINUTES: Record<string, number> = {
+  "loja-01": 180,  // 3h — loja grande, equipe dedicada
+  "loja-02": 340,  // ~5h40
+  "loja-03": 260,  // ~4h20
+  "loja-04": 480,  // 8h — menor equipe
+  "loja-05": 150,  // 2h30 — loja mais ágil
+};
+
 /** Taxa de passagem por etapa (probabilidade acumulada de chegar) */
 const STAGE_PASS_RATE: Record<StageKey, number> = {
   lead_capturado:       1.00,
@@ -86,19 +95,25 @@ export function getKPIs(filters: DashboardFilters): KPIData {
   const avgTicket   = avgTicketBase + rand(-3000, 5000);
   const totalRevenue = wonDeals * avgTicket;
 
+  const avgFirstResponseMinutes = Math.round(
+    ids.reduce((sum, id) => sum + (STORE_FIRST_RESPONSE_MINUTES[id] ?? 300), 0) / ids.length
+  ) + rand(-30, 60);
+
   return {
     totalLeads,
-    totalLeadsDelta:      rand(-18, 32),
-    totalConversion:      parseFloat(((wonDeals / totalLeads) * 100).toFixed(1)),
-    totalConversionDelta: parseFloat((rand(-5, 8) / 10).toFixed(1)),
-    avgCycleDays:         rand(28, 45),
-    avgCycleDelta:        rand(-6, 10),
+    totalLeadsDelta:         rand(-18, 32),
+    totalConversion:         parseFloat(((wonDeals / totalLeads) * 100).toFixed(1)),
+    totalConversionDelta:    parseFloat((rand(-5, 8) / 10).toFixed(1)),
+    avgCycleDays:            rand(28, 45),
+    avgCycleDelta:           rand(-6, 10),
     wonDeals,
-    wonDealsDelta:        rand(-15, 25),
+    wonDealsDelta:           rand(-15, 25),
     totalRevenue,
-    totalRevenueDelta:    rand(-20, 35),
+    totalRevenueDelta:       rand(-20, 35),
     avgTicket,
-    avgTicketDelta:       rand(-8, 12),
+    avgTicketDelta:          rand(-8, 12),
+    avgFirstResponseMinutes,
+    avgFirstResponseDelta:   rand(-15, 25),
   };
 }
 
@@ -196,14 +211,18 @@ export function getStoreRanking(filters: DashboardFilters): StoreRankingRow[] {
       const revenue   = won * avgTicket;
       const trend     = Array.from({ length: 7 }, () => rand(5, 30));
 
+      const avgFirstResponseMinutes =
+        (STORE_FIRST_RESPONSE_MINUTES[store.id] ?? 300) + rand(-40, 80);
+
       return {
         store,
         leads,
-        conversion:   conv,
-        wonDeals:     won,
+        conversion:              conv,
+        wonDeals:                won,
         revenue,
         avgTicket,
-        avgCycleDays: rand(28, 48),
+        avgCycleDays:            rand(28, 48),
+        avgFirstResponseMinutes,
         trend,
       };
     })

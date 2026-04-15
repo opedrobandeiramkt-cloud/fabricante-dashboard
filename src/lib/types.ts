@@ -60,6 +60,8 @@ export interface KPIData {
   totalRevenueDelta: number;
   avgTicket: number;       // R$ ticket médio por venda
   avgTicketDelta: number;
+  avgFirstResponseMinutes: number; // minutos até 1ª resposta
+  avgFirstResponseDelta: number;
 }
 
 export interface FunnelStageData {
@@ -81,6 +83,7 @@ export interface StoreRankingRow {
   revenue: number;     // R$ faturado no período
   avgTicket: number;   // R$ ticket médio
   avgCycleDays: number;
+  avgFirstResponseMinutes: number; // minutos até 1ª resposta
   trend: number[]; // últimos 7 pontos para sparkline
 }
 
