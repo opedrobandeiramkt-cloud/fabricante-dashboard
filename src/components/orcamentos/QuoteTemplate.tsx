@@ -299,7 +299,7 @@ function TricolorBar() {
   );
 }
 
-function Header({ dateStr, quoteNumber, pageLabel, pageNum, pageTotal }: {
+function Header({ dateStr, quoteNumber, pageLabel, pageNum: _pageNum, pageTotal: _pageTotal }: {
   dateStr: string; quoteNumber: string; pageLabel: string; pageNum: number; pageTotal: number;
 }) {
   return (
