@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { useOrcamentosStore, orcamentosStore } from "@/lib/orcamentos-store";
-import type { Orcamento, Period } from "@/lib/types";
+import { useQuotesStore, quotesStore } from "@/lib/quotes-store";
+import type { SavedQuote } from "@/lib/pool-data";
+import type { Period } from "@/lib/types";
 
 function periodStart(period: Period): Date {
   const now = new Date();
@@ -19,10 +20,11 @@ interface FilterParams {
 }
 
 interface OrcamentosContextValue {
-  orcamentos: Orcamento[];
-  addOrcamento: typeof orcamentosStore.add;
-  updateOrcamento: typeof orcamentosStore.update;
-  markAsWon: typeof orcamentosStore.markAsWon;
+  quotes: SavedQuote[];
+  addQuote: typeof quotesStore.add;
+  updateQuote: typeof quotesStore.update;
+  markAsWon: typeof quotesStore.markAsWon;
+  markAsLost: typeof quotesStore.markAsLost;
   wonRevenueForPeriod: (params: FilterParams) => number;
   wonCountForPeriod: (params: FilterParams) => number;
 }
@@ -30,23 +32,21 @@ interface OrcamentosContextValue {
 const OrcamentosContext = createContext<OrcamentosContextValue | null>(null);
 
 export function OrcamentosProvider({ children }: { children: ReactNode }) {
-  const orcamentos = useOrcamentosStore((s) => s.orcamentos);
+  const quotes = useQuotesStore();
 
-  function filterWon(
-    { storeIds, period, vendedorId }: FilterParams,
-  ): Orcamento[] {
+  function filterWon({ storeIds, period, vendedorId }: FilterParams): SavedQuote[] {
     const start = periodStart(period);
-    return orcamentos.filter((o) => {
-      if (o.status !== "ganho" || !o.wonAt) return false;
-      if (new Date(o.wonAt) < start) return false;
-      if (storeIds.length > 0 && !storeIds.includes(o.storeId)) return false;
-      if (vendedorId && o.vendedorId !== vendedorId) return false;
+    return quotes.filter((q) => {
+      if (q.status !== "ganho" || !q.wonAt) return false;
+      if (new Date(q.wonAt) < start) return false;
+      if (storeIds.length > 0 && !storeIds.includes(q.storeId)) return false;
+      if (vendedorId && q.vendedorId !== vendedorId) return false;
       return true;
     });
   }
 
   function wonRevenueForPeriod(params: FilterParams): number {
-    return filterWon(params).reduce((sum, o) => sum + o.totalValue, 0);
+    return filterWon(params).reduce((sum, q) => sum + q.proposalValue, 0);
   }
 
   function wonCountForPeriod(params: FilterParams): number {
@@ -56,10 +56,11 @@ export function OrcamentosProvider({ children }: { children: ReactNode }) {
   return (
     <OrcamentosContext.Provider
       value={{
-        orcamentos,
-        addOrcamento: orcamentosStore.add,
-        updateOrcamento: orcamentosStore.update,
-        markAsWon: orcamentosStore.markAsWon,
+        quotes,
+        addQuote: quotesStore.add,
+        updateQuote: quotesStore.update,
+        markAsWon: quotesStore.markAsWon,
+        markAsLost: quotesStore.markAsLost,
         wonRevenueForPeriod,
         wonCountForPeriod,
       }}

@@ -1,414 +1,557 @@
-import { useState, useMemo } from "react";
-import {
-  Plus, Search, FileText, CheckCircle2, Clock, Send, MessageSquare, Trophy,
-  Pencil, AlertTriangle,
-} from "lucide-react";
-import { OrcamentoFormModal } from "./OrcamentoFormModal";
+import { useState, useRef } from "react";
+import { FileText, History, Waves, Plus, Pencil, Trophy, X, ChevronDown, Trash2 } from "lucide-react";
 import { useOrcamentos } from "@/contexts/OrcamentosContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStores } from "@/contexts/StoresContext";
-import { useUsersContext } from "@/contexts/UsersContext";
-import type { Orcamento, OrcamentoStatus } from "@/lib/types";
+import { QuoteForm } from "@/components/orcamentos/QuoteForm";
+import { QuoteTemplate } from "@/components/orcamentos/QuoteTemplate";
+import {
+  type QuoteFormData,
+  type SavedQuote,
+  type PoolModel,
+  type PoolSize,
+  type QuoteStatus,
+  loadPoolModels,
+  savePoolModels,
+  loadPoolSizes,
+  savePoolSizes,
+  defaultPoolModels,
+  defaultPoolSizes,
+  formatCurrency,
+} from "@/lib/pool-data";
 
-const STATUS_LABELS: Record<OrcamentoStatus, string> = {
-  rascunho: "Rascunho",
-  enviado: "Enviado",
-  em_negociacao: "Em Negociação",
+type Tab = "novo" | "historico" | "piscinas";
+type StatusFilter = "todos" | QuoteStatus;
+
+const STATUS_LABELS: Record<QuoteStatus, string> = {
+  pendente: "Pendente",
   ganho: "Ganho",
+  perdido: "Perdido",
 };
 
-const STATUS_TABS: { key: OrcamentoStatus | "todos"; label: string }[] = [
-  { key: "todos", label: "Todos" },
-  { key: "rascunho", label: "Rascunho" },
-  { key: "enviado", label: "Enviado" },
-  { key: "em_negociacao", label: "Em Negociação" },
-  { key: "ganho", label: "Ganhos" },
-];
-
-function fmtBRL(n: number) {
-  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
-  if (n >= 1_000) return `R$ ${(n / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}K`;
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-}
-
-function StatusBadge({ status }: { status: OrcamentoStatus }) {
-  const map: Record<OrcamentoStatus, string> = {
-    rascunho:      "bg-secondary text-muted-foreground",
-    enviado:       "bg-[hsl(var(--primary)/0.12)] text-primary",
-    em_negociacao: "bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))]",
-    ganho:         "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]",
-  };
-  const icons: Record<OrcamentoStatus, React.ReactNode> = {
-    rascunho:      <Clock className="h-3 w-3" />,
-    enviado:       <Send className="h-3 w-3" />,
-    em_negociacao: <MessageSquare className="h-3 w-3" />,
-    ganho:         <CheckCircle2 className="h-3 w-3" />,
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${map[status]}`}>
-      {icons[status]} {STATUS_LABELS[status]}
-    </span>
-  );
-}
-
-function WonConfirmModal({
-  orcamento,
-  onConfirm,
-  onClose,
-}: {
-  orcamento: Orcamento;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full max-w-sm bg-card border border-border rounded-xl shadow-2xl p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-[hsl(var(--success)/0.12)] flex items-center justify-center">
-            <Trophy className="h-5 w-5 text-[hsl(var(--success))]" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-foreground">Marcar como Ganho?</h3>
-            <p className="text-sm text-muted-foreground">Esta ação não pode ser desfeita</p>
-          </div>
-        </div>
-
-        <p className="text-sm text-muted-foreground p-3 bg-secondary/50 rounded-lg border border-border">
-          O orçamento <span className="font-semibold text-foreground">{orcamento.numero}</span> de{" "}
-          <span className="font-semibold text-foreground">{orcamento.clientName}</span>{" "}
-          no valor de{" "}
-          <span className="font-semibold text-[hsl(var(--success))]">{fmtBRL(orcamento.totalValue)}</span>{" "}
-          será marcado como ganho e adicionado ao faturamento do dashboard.
-          <br /><br />
-          Após confirmar, o orçamento não poderá mais ser editado.
-        </p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors border border-border"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-2 text-sm font-medium bg-[hsl(var(--success))] text-white rounded-lg hover:bg-[hsl(var(--success)/0.85)] transition-colors"
-          >
-            Confirmar Ganho
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const STATUS_COLORS: Record<QuoteStatus, string> = {
+  pendente: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
+  ganho: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+  perdido: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
+};
 
 export function OrcamentosPage() {
-  const { user, isVendedor, allowedStoreIds } = useAuth();
+  const { quotes, addQuote, updateQuote, markAsWon } = useOrcamentos();
+  const { user, allowedStoreIds } = useAuth();
   const { stores } = useStores();
-  const { users } = useUsersContext();
-  const { orcamentos, addOrcamento, updateOrcamento, markAsWon } = useOrcamentos();
 
-  const [search,      setSearch]      = useState("");
-  const [statusTab,   setStatusTab]   = useState<OrcamentoStatus | "todos">("todos");
-  const [modalTarget, setModalTarget] = useState<Orcamento | null | "new">(null);
-  const [wonTarget,   setWonTarget]   = useState<Orcamento | null>(null);
+  const [tab, setTab] = useState<Tab>("historico");
+  const [editingQuote, setEditingQuote] = useState<SavedQuote | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [quoteData, setQuoteData] = useState<QuoteFormData | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [confirmWonId, setConfirmWonId] = useState<string | null>(null);
+  const quoteRef = useRef<HTMLDivElement>(null);
 
-  const vendedores = useMemo(
-    () => users.filter((u) => u.role === "vendedor"),
-    [users],
-  );
+  const storeId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
+  const vendedorId = user?.id ?? "";
+  const vendedorName = user?.name ?? "";
 
-  const visibleOrcamentos = useMemo(() => {
-    let list = orcamentos;
-    if (isVendedor) {
-      list = list.filter((o) => o.vendedorId === user?.id);
-    } else if (allowedStoreIds.length > 0) {
-      list = list.filter((o) => allowedStoreIds.includes(o.storeId));
+  // ── NOVO ORÇAMENTO ─────────────────────────────────────────────────────────
+  async function handleGenerate(data: QuoteFormData) {
+    setQuoteData(data);
+    setGenerating(true);
+
+    if (editingQuote) {
+      updateQuote(editingQuote.id, {
+        clientName: data.clientName,
+        proposalValue: data.proposalValue,
+        formData: data,
+      });
+    } else {
+      addQuote({
+        clientName: data.clientName,
+        proposalValue: data.proposalValue,
+        status: "pendente",
+        formData: data,
+        vendedorId,
+        vendedorName,
+        storeId,
+      });
     }
-    return list;
-  }, [orcamentos, isVendedor, user?.id, allowedStoreIds]);
 
-  const filtered = useMemo(() => {
-    return visibleOrcamentos.filter((o) => {
-      const matchTab = statusTab === "todos" || o.status === statusTab;
-      const matchSearch =
-        !search ||
-        o.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        o.numero.toLowerCase().includes(search.toLowerCase()) ||
-        o.vendedorName.toLowerCase().includes(search.toLowerCase());
-      return matchTab && matchSearch;
-    });
-  }, [visibleOrcamentos, statusTab, search]);
-
-  const storeMap = useMemo(() => new Map(stores.map((s) => [s.id, s])), [stores]);
-
-  const summary = useMemo(() => {
-    const ativos = visibleOrcamentos.filter((o) => o.status !== "ganho");
-    const ganhos = visibleOrcamentos.filter((o) => o.status === "ganho");
-    return {
-      totalAtivos: ativos.length,
-      valorAtivos: ativos.reduce((s, o) => s + o.totalValue, 0),
-      totalGanhos: ganhos.length,
-      valorGanhos: ganhos.reduce((s, o) => s + o.totalValue, 0),
-    };
-  }, [visibleOrcamentos]);
-
-  function handleSave(data: Parameters<typeof addOrcamento>[0]) {
-    if (modalTarget === "new") {
-      addOrcamento(data);
-    } else if (modalTarget) {
-      updateOrcamento(modalTarget.id, data);
-    }
-    setModalTarget(null);
+    setTimeout(async () => {
+      if (!quoteRef.current) { setGenerating(false); return; }
+      try {
+        const html2pdf = (await import("html2pdf.js")).default;
+        const opts = {
+          margin: 0,
+          filename: `orcamento-${data.clientName.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, windowWidth: 794 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
+        };
+        await html2pdf().set(opts as never).from(quoteRef.current).save();
+      } catch (err) {
+        console.error("Erro ao gerar PDF:", err);
+      } finally {
+        setGenerating(false);
+        setEditingQuote(null);
+        setQuoteData(null);
+        setTab("historico");
+      }
+    }, 500);
   }
 
-  function handleConfirmWon() {
-    if (wonTarget) {
-      markAsWon(wonTarget.id);
-      setWonTarget(null);
-    }
+  function handleEdit(quote: SavedQuote) {
+    setEditingQuote(quote);
+    setTab("novo");
   }
 
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { todos: visibleOrcamentos.length };
-    for (const o of visibleOrcamentos) {
-      counts[o.status] = (counts[o.status] ?? 0) + 1;
+  function handleCancelEdit() {
+    setEditingQuote(null);
+    setTab("historico");
+  }
+
+  // ── HISTÓRICO ──────────────────────────────────────────────────────────────
+  const filtered = quotes.filter((q) => statusFilter === "todos" || q.status === statusFilter);
+  const wonCount = quotes.filter((q) => q.status === "ganho").length;
+  const pendingCount = quotes.filter((q) => q.status === "pendente").length;
+
+  // ── PISCINAS ───────────────────────────────────────────────────────────────
+  const [models, setModels] = useState<PoolModel[]>(() => loadPoolModels());
+  const [sizes, setSizes] = useState<PoolSize[]>(() => loadPoolSizes());
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [showModelForm, setShowModelForm] = useState(false);
+  const [showSizeForm, setShowSizeForm] = useState(false);
+  const [editingModel, setEditingModel] = useState<PoolModel | null>(null);
+  const [editingSize, setEditingSize] = useState<PoolSize | null>(null);
+  const [modelForm, setModelForm] = useState({ name: "", line: "" });
+  const [sizeForm, setSizeForm] = useState({ dimensions: "", area: "", price: "" });
+
+  function refreshCatalog() {
+    setModels(loadPoolModels());
+    setSizes(loadPoolSizes());
+  }
+
+  function handleSaveModel() {
+    if (!modelForm.name || !modelForm.line) return;
+    if (editingModel) {
+      savePoolModels(models.map((m) => m.id === editingModel.id ? { ...m, ...modelForm } : m));
+    } else {
+      savePoolModels([...models, { id: crypto.randomUUID(), name: modelForm.name, line: modelForm.line }]);
     }
-    return counts;
-  }, [visibleOrcamentos]);
+    refreshCatalog();
+    setShowModelForm(false);
+    setEditingModel(null);
+    setModelForm({ name: "", line: "" });
+  }
+
+  function handleDeleteModel(id: string) {
+    if (!window.confirm("Excluir este modelo? Os tamanhos vinculados também serão removidos.")) return;
+    savePoolModels(models.filter((m) => m.id !== id));
+    savePoolSizes(sizes.filter((s) => s.modelId !== id));
+    refreshCatalog();
+    if (selectedModelId === id) setSelectedModelId("");
+  }
+
+  function handleSaveSize() {
+    if (!sizeForm.dimensions || !sizeForm.area || !selectedModelId) return;
+    if (editingSize) {
+      savePoolSizes(sizes.map((s) => s.id === editingSize.id
+        ? { ...s, dimensions: sizeForm.dimensions, area: sizeForm.area, price: parseFloat(sizeForm.price) || 0 }
+        : s
+      ));
+    } else {
+      savePoolSizes([...sizes, {
+        id: crypto.randomUUID(), modelId: selectedModelId,
+        dimensions: sizeForm.dimensions, area: sizeForm.area,
+        price: parseFloat(sizeForm.price) || 0, semiPastilha: false,
+      }]);
+    }
+    refreshCatalog();
+    setShowSizeForm(false);
+    setEditingSize(null);
+    setSizeForm({ dimensions: "", area: "", price: "" });
+  }
+
+  function handleDeleteSize(id: string) {
+    if (!window.confirm("Excluir este tamanho?")) return;
+    savePoolSizes(sizes.filter((s) => s.id !== id));
+    refreshCatalog();
+  }
+
+  function handleResetCatalog() {
+    if (!window.confirm("Restaurar o catálogo padrão? Todas as personalizações serão perdidas.")) return;
+    savePoolModels(defaultPoolModels);
+    savePoolSizes(defaultPoolSizes);
+    refreshCatalog();
+    setSelectedModelId("");
+  }
+
+  const modelSizes = sizes.filter((s) => s.modelId === selectedModelId);
+  const inputCls = "w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {visibleOrcamentos.length} orçamento{visibleOrcamentos.length !== 1 ? "s" : ""} no total
-          </p>
-        </div>
-        <button
-          onClick={() => setModalTarget("new")}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Orçamento
-        </button>
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/50 border border-border w-fit">
+        {([
+          { id: "historico" as Tab, icon: <History className="h-3.5 w-3.5" />, label: "Histórico" },
+          { id: "novo" as Tab, icon: <Plus className="h-3.5 w-3.5" />, label: "Novo Orçamento" },
+          { id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" },
+        ] as const).map(({ id, icon, label }) => (
+          <button
+            key={id}
+            onClick={() => {
+              setTab(id);
+              if (id !== "novo") { setEditingQuote(null); setQuoteData(null); }
+            }}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {icon}{label}
+          </button>
+        ))}
       </div>
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard
-          label="Em Aberto"
-          count={summary.totalAtivos}
-          value={summary.valorAtivos}
-          color="primary"
-          icon={<FileText className="h-4 w-4" />}
-        />
-        <SummaryCard
-          label="Ganhos"
-          count={summary.totalGanhos}
-          value={summary.valorGanhos}
-          color="success"
-          icon={<Trophy className="h-4 w-4" />}
-        />
-        <div className="col-span-2 card-base p-4 flex items-center gap-4">
-          <div className="h-10 w-10 rounded-lg bg-[hsl(var(--warning)/0.12)] flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="h-4 w-4 text-[hsl(var(--warning))]" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Orçamentos não podem ser excluídos.</p>
-            <p className="text-xs text-muted-foreground">
-              Edite antes de marcar como{" "}
-              <span className="text-[hsl(var(--success))] font-medium">Ganho</span> — após isso, nenhuma alteração é possível.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por cliente, número ou vendedor..."
-            className="w-full pl-9 pr-4 py-2 text-sm bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+      {/* ── NOVO ORÇAMENTO ── */}
+      {tab === "novo" && (
+        <div className="max-w-2xl space-y-4">
+          {editingQuote && (
+            <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 px-4 py-3">
+              <span className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                Editando orçamento de <strong>{editingQuote.clientName}</strong>
+              </span>
+              <button onClick={handleCancelEdit} className="text-xs text-amber-600 hover:text-amber-800 underline">
+                Cancelar
+              </button>
+            </div>
+          )}
+          <QuoteForm
+            onGenerate={handleGenerate}
+            initialData={editingQuote?.formData}
+            defaultSellerName={vendedorName}
+            generating={generating}
           />
         </div>
-        <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setStatusTab(tab.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-                statusTab === tab.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-              {tabCounts[tab.key] !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                  statusTab === tab.key ? "bg-white/20" : "bg-secondary"
-                }`}>
-                  {tabCounts[tab.key]}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
-      {/* Tabela */}
-      {filtered.length === 0 ? (
-        <div className="card-base flex flex-col items-center justify-center py-16 text-center">
-          <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">Nenhum orçamento encontrado</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {search || statusTab !== "todos"
-              ? "Tente outros filtros"
-              : "Clique em \"Novo Orçamento\" para começar"}
-          </p>
-        </div>
-      ) : (
-        <div className="card-base overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Cliente</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 hidden sm:table-cell">Loja</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Valor</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Status</th>
-                  {!isVendedor && (
-                    <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 hidden md:table-cell">Vendedor</th>
-                  )}
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 hidden lg:table-cell">Data</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((o) => {
-                  const storeName = storeMap.get(o.storeId)?.name ?? o.storeId;
-                  const isWon = o.status === "ganho";
-                  return (
-                    <tr key={o.id} className={`hover:bg-secondary/30 transition-colors ${isWon ? "opacity-70" : ""}`}>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.numero}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-foreground">{o.clientName}</p>
-                        {o.clientPhone && (
-                          <p className="text-xs text-muted-foreground">{o.clientPhone}</p>
+      {/* ── HISTÓRICO ── */}
+      {tab === "historico" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Total</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">{quotes.length}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
+              <p className="mt-1 text-2xl font-bold text-yellow-600">{pendingCount}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-medium text-muted-foreground">Ganhos</p>
+              <p className="mt-1 text-2xl font-bold text-green-600">{wonCount}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {(["todos", "pendente", "ganho", "perdido"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
+                  statusFilter === s
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                }`}
+              >
+                {s === "todos" ? "Todos" : STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card p-12 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {quotes.length === 0 ? "Nenhum orçamento criado ainda." : "Nenhum orçamento com este filtro."}
+              </p>
+              {quotes.length === 0 && (
+                <button
+                  onClick={() => setTab("novo")}
+                  className="mt-4 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Criar primeiro orçamento
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/40 border-b border-border">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Cliente</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground hidden sm:table-cell">Data</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground hidden md:table-cell">Consultor</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground">Valor</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((q) => (
+                    <tr key={q.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-foreground">{q.clientName}</td>
+                      <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                        {new Date(q.date).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{q.vendedorName}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">
+                        {formatCurrency(q.proposalValue)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {q.status === "ganho" ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[q.status]}`}>
+                            {STATUS_LABELS[q.status]}
+                          </span>
+                        ) : (
+                          <select
+                            value={q.status}
+                            onChange={(e) => {
+                              const val = e.target.value as QuoteStatus;
+                              if (val === "ganho") setConfirmWonId(q.id);
+                              else updateQuote(q.id, { status: val });
+                            }}
+                            className="text-xs border border-border rounded-lg px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="pendente">Pendente</option>
+                            <option value="perdido">Perdido</option>
+                            <option value="ganho">Ganho ✓</option>
+                          </select>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{storeName}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">{fmtBRL(o.totalValue)}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={o.status} />
-                      </td>
-                      {!isVendedor && (
-                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{o.vendedorName}</td>
-                      )}
-                      <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
-                        {fmtDate(o.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          {!isWon && (
+                        <div className="flex items-center justify-end gap-2">
+                          {q.status !== "ganho" && (
                             <>
                               <button
-                                onClick={() => setModalTarget(o)}
+                                onClick={() => handleEdit(q)}
                                 title="Editar orçamento"
-                                className="h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => setWonTarget(o)}
+                                onClick={() => setConfirmWonId(q.id)}
                                 title="Marcar como ganho"
-                                className="h-8 px-2 rounded-lg hover:bg-[hsl(var(--success)/0.1)] flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-[hsl(var(--success))] transition-colors"
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                               >
                                 <Trophy className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">Ganho</span>
                               </button>
                             </>
-                          )}
-                          {isWon && (
-                            <span className="flex items-center gap-1 text-xs text-[hsl(var(--success))] font-medium px-2">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Ganho
-                            </span>
                           )}
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PISCINAS ── */}
+      {tab === "piscinas" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Gerencie o catálogo de modelos e tamanhos de piscinas iGUi.</p>
+            <button onClick={handleResetCatalog} className="text-xs text-muted-foreground hover:text-foreground underline">
+              Restaurar padrão
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Models panel */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
+                <h3 className="text-sm font-semibold text-foreground">Modelos</h3>
+                <button
+                  onClick={() => { setShowModelForm(true); setEditingModel(null); setModelForm({ name: "", line: "" }); }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Novo
+                </button>
+              </div>
+
+              {showModelForm && (
+                <div className="p-4 border-b border-border bg-secondary/10 space-y-3">
+                  <input className={inputCls} placeholder="Nome do modelo (ex: Navagio)" value={modelForm.name}
+                    onChange={(e) => setModelForm((f) => ({ ...f, name: e.target.value }))} />
+                  <input className={inputCls} placeholder="Linha (ex: Premium, Tradicional)" value={modelForm.line}
+                    onChange={(e) => setModelForm((f) => ({ ...f, line: e.target.value }))} />
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveModel} className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                      Salvar
+                    </button>
+                    <button onClick={() => { setShowModelForm(false); setEditingModel(null); }} className="px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <ul className="divide-y divide-border">
+                {models.map((m) => (
+                  <li
+                    key={m.id}
+                    className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                      selectedModelId === m.id ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-secondary/30"
+                    }`}
+                    onClick={() => setSelectedModelId(m.id)}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{m.name}</p>
+                      <p className="text-xs text-muted-foreground">{m.line}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground mr-1">
+                        {sizes.filter((s) => s.modelId === m.id).length} tam.
+                      </span>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingModel(m); setModelForm({ name: m.name, line: m.line }); setShowModelForm(true); }}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteModel(m.id); }}
+                        className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${selectedModelId === m.id ? "-rotate-90" : ""}`} />
+                    </div>
+                  </li>
+                ))}
+                {models.length === 0 && (
+                  <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhum modelo cadastrado.</li>
+                )}
+              </ul>
+            </div>
+
+            {/* Sizes panel */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Tamanhos{selectedModelId ? ` — ${models.find((m) => m.id === selectedModelId)?.name}` : ""}
+                </h3>
+                {selectedModelId && (
+                  <button
+                    onClick={() => { setShowSizeForm(true); setEditingSize(null); setSizeForm({ dimensions: "", area: "", price: "" }); }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-3 w-3" /> Novo
+                  </button>
+                )}
+              </div>
+
+              {!selectedModelId && (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  Selecione um modelo para ver os tamanhos.
+                </div>
+              )}
+
+              {selectedModelId && (
+                <>
+                  {showSizeForm && (
+                    <div className="p-4 border-b border-border bg-secondary/10 space-y-3">
+                      <input className={inputCls} placeholder="Dimensões (ex: 4,00 x 2,50 x 1,10)"
+                        value={sizeForm.dimensions} onChange={(e) => setSizeForm((f) => ({ ...f, dimensions: e.target.value }))} />
+                      <input className={inputCls} placeholder="Área (ex: 10,00 m²)"
+                        value={sizeForm.area} onChange={(e) => setSizeForm((f) => ({ ...f, area: e.target.value }))} />
+                      <input type="number" className={inputCls} placeholder="Preço de referência (ex: 22500)"
+                        value={sizeForm.price} onChange={(e) => setSizeForm((f) => ({ ...f, price: e.target.value }))} />
+                      <div className="flex gap-2">
+                        <button onClick={handleSaveSize} className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                          Salvar
+                        </button>
+                        <button onClick={() => { setShowSizeForm(false); setEditingSize(null); }} className="px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <ul className="divide-y divide-border">
+                    {modelSizes.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-secondary/20 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{s.dimensions} m</p>
+                          <p className="text-xs text-muted-foreground">{s.area}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {s.price > 0 && <span className="text-xs text-muted-foreground">{formatCurrency(s.price)}</span>}
+                          <button onClick={() => { setEditingSize(s); setSizeForm({ dimensions: s.dimensions, area: s.area, price: String(s.price) }); setShowSizeForm(true); }}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button onClick={() => handleDeleteSize(s.id)}
+                            className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {modelSizes.length === 0 && (
+                      <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                        Nenhum tamanho cadastrado. Clique em "+ Novo" para adicionar.
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal de criação/edição */}
-      {modalTarget !== null && user && (
-        <OrcamentoFormModal
-          orcamento={modalTarget === "new" ? null : modalTarget}
-          currentUser={user}
-          stores={stores}
-          vendedores={vendedores.length > 0 ? vendedores : [user]}
-          allowedStoreIds={allowedStoreIds}
-          onSave={handleSave}
-          onClose={() => setModalTarget(null)}
-        />
+      {/* Confirm Won Modal */}
+      {confirmWonId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                <Trophy className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Marcar como Ganho?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Esta ação é permanente e não pode ser desfeita.</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 px-3 py-2.5">
+              <p className="text-xs text-amber-800 dark:text-amber-400 font-medium">
+                O valor será contabilizado no faturamento do dashboard e o orçamento não poderá mais ser editado.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { markAsWon(confirmWonId); setConfirmWonId(null); }}
+                className="flex-1 py-2.5 text-sm font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Confirmar
+              </button>
+              <button
+                onClick={() => setConfirmWonId(null)}
+                className="flex-1 py-2.5 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Modal de confirmação "Ganho" */}
-      {wonTarget && (
-        <WonConfirmModal
-          orcamento={wonTarget}
-          onConfirm={handleConfirmWon}
-          onClose={() => setWonTarget(null)}
-        />
+      {/* Offscreen PDF template */}
+      {quoteData && (
+        <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+          <QuoteTemplate ref={quoteRef} data={quoteData} />
+        </div>
       )}
-    </div>
-  );
-}
-
-function SummaryCard({
-  label, count, value, color, icon,
-}: {
-  label: string;
-  count: number;
-  value: number;
-  color: "primary" | "success";
-  icon: React.ReactNode;
-}) {
-  const cls = color === "success"
-    ? { bg: "bg-[hsl(var(--success)/0.12)]", text: "text-[hsl(var(--success))]" }
-    : { bg: "bg-[hsl(var(--primary)/0.12)]", text: "text-primary" };
-
-  return (
-    <div className="card-base p-4 flex items-center gap-3">
-      <div className={`h-10 w-10 rounded-lg ${cls.bg} flex items-center justify-center flex-shrink-0`}>
-        <span className={cls.text}>{icon}</span>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-bold text-foreground">{count}</p>
-        <p className={`text-xs font-medium ${cls.text} truncate`}>{fmtBRL(value)}</p>
-      </div>
     </div>
   );
 }
