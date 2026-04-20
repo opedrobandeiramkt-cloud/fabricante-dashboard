@@ -52,7 +52,14 @@ export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", gen
 
   const update = <K extends keyof QuoteFormData>(field: K, value: QuoteFormData[K]) => {
     if (field === "poolModelId") {
-      setForm((prev) => ({ ...prev, poolModelId: value as string, poolSizeId: "" }));
+      setForm((prev) => ({ ...prev, poolModelId: value as string, poolSizeId: "", proposalValue: 0 }));
+    } else if (field === "poolSizeId") {
+      const size = poolSizes.find((s) => s.id === (value as string));
+      setForm((prev) => ({
+        ...prev,
+        poolSizeId: value as string,
+        proposalValue: size?.price && size.price > 0 ? size.price : prev.proposalValue,
+      }));
     } else {
       setForm((prev) => ({ ...prev, [field]: value }));
     }
@@ -118,7 +125,7 @@ export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", gen
             <select required className={inputCls} value={form.poolSizeId} onChange={(e) => update("poolSizeId", e.target.value)} disabled={!form.poolModelId}>
               <option value="">{form.poolModelId ? "Selecione o tamanho" : "Selecione o modelo primeiro"}</option>
               {availableSizes.map((s) => (
-                <option key={s.id} value={s.id}>{s.dimensions} — {s.area}</option>
+                <option key={s.id} value={s.id}>{s.dimensions}</option>
               ))}
             </select>
           </div>

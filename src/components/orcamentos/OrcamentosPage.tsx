@@ -37,7 +37,7 @@ const STATUS_COLORS: Record<QuoteStatus, string> = {
 
 export function OrcamentosPage() {
   const { quotes, addQuote, updateQuote, markAsWon } = useOrcamentos();
-  const { user, allowedStoreIds } = useAuth();
+  const { user, allowedStoreIds, isVendedor } = useAuth();
   const { stores } = useStores();
 
   const [tab, setTab] = useState<Tab>("historico");
@@ -195,7 +195,7 @@ export function OrcamentosPage() {
         {([
           { id: "historico" as Tab, icon: <History className="h-3.5 w-3.5" />, label: "Histórico" },
           { id: "novo" as Tab, icon: <Plus className="h-3.5 w-3.5" />, label: "Novo Orçamento" },
-          { id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" },
+          ...(!isVendedor ? [{ id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" }] : []),
         ] as const).map(({ id, icon, label }) => (
           <button
             key={id}
