@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download, Menu, X } from "lucide-react";
+import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download, Menu, X, FileText } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
 import { KPICards }            from "@/components/dashboard/KPICards";
@@ -12,6 +12,8 @@ import { SalesGoalProgress }   from "@/components/dashboard/SalesGoalProgress";
 import { VendedorDashboard }   from "@/components/dashboard/VendedorDashboard";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
+import { OrcamentosPage }      from "@/components/orcamentos/OrcamentosPage";
+import { useOrcamentos }       from "@/contexts/OrcamentosContext";
 import { LoginPage }           from "@/components/auth/LoginPage";
 import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
@@ -24,6 +26,7 @@ import type { Period }    from "@/lib/types";
 
 const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
 type Page = "dashboard" | "stores" | "users";
+type DashboardTab = "metricas" | "orcamentos";
 
 export default function App() {
   const { isAuthenticated } = useAuth();
@@ -53,8 +56,9 @@ function AuthenticatedApp() {
     }
   }, [user?.id]);
 
-  const [page,          setPage]          = useState<Page>("dashboard");
-  const [userMenuOpen,  setUserMenuOpen]  = useState(false);
+  const [page,           setPage]           = useState<Page>("dashboard");
+  const [dashboardTab,   setDashboardTab]   = useState<DashboardTab>("metricas");
+  const [userMenuOpen,   setUserMenuOpen]   = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedStores, setSelectedStores] = useState<string[]>(() =>
     isAdmin ? [] : allowedStoreIds
@@ -95,7 +99,25 @@ function AuthenticatedApp() {
     [effectiveStoreIds, period, isVendedor, user?.crmUserId]
   );
 
-  const { kpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
+  const { wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
+
+  const { kpis: rawKpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
+
+  // Adiciona receita de orçamentos ganhos ao faturamento total
+  const orcamentosRevenue = wonRevenueForPeriod({ storeIds: effectiveStoreIds, period });
+  const orcamentosAllCount = wonCountForPeriod({ storeIds: effectiveStoreIds, period });
+  const orcamentosVendedorRevenue = isVendedor && user?.id
+    ? wonRevenueForPeriod({ storeIds: effectiveStoreIds, period, vendedorId: user.id })
+    : 0;
+  const orcamentosVendedorCount = isVendedor && user?.id
+    ? wonCountForPeriod({ storeIds: effectiveStoreIds, period, vendedorId: user.id })
+    : 0;
+
+  const kpis = useMemo(() => ({
+    ...rawKpis,
+    totalRevenue: rawKpis.totalRevenue + orcamentosRevenue,
+    wonDeals: rawKpis.wonDeals + (isVendedor ? orcamentosVendedorCount : orcamentosAllCount),
+  }), [rawKpis, orcamentosRevenue, orcamentosAllCount, orcamentosVendedorCount, isVendedor]);
 
   // Mostra apenas lojas ativas; aplica nome/cidade local quando disponível
   const storeMap = new Map(stores.map((s) => [s.id, s]));
@@ -161,8 +183,8 @@ function AuthenticatedApp() {
 
           {/* Direita */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Filtros desktop — apenas no dashboard e não para vendedor */}
-            {page === "dashboard" && !isVendedor && (
+            {/* Filtros desktop — apenas no dashboard > aba métricas e não para vendedor */}
+            {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
               <>
                 <div className="hidden md:block">
                   <StoreFilter
@@ -249,8 +271,8 @@ function AuthenticatedApp() {
           </div>
         </div>
 
-        {/* Barra de filtros mobile — apenas no dashboard e não para vendedor */}
-        {page === "dashboard" && !isVendedor && (
+        {/* Barra de filtros mobile — apenas no dashboard > aba métricas e não para vendedor */}
+        {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
           <div className="md:hidden border-t border-border flex flex-col">
             {/* Linha 1: StoreFilter — sem overflow para o dropdown funcionar */}
             <div className="px-4 pt-2 pb-1">
@@ -312,30 +334,61 @@ function AuthenticatedApp() {
       {/* Conteúdo */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {page === "dashboard" ? (
-          isVendedor ? (
-            <VendedorDashboard kpis={kpis} />
-          ) : (
-            <div className="space-y-4 sm:space-y-6">
-              {!isAdmin && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
-                  <Store className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    Visualizando dados de{" "}
-                    <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
-                    sob sua responsabilidade.
-                  </span>
-                </div>
-              )}
-
-              <KPICards data={kpis} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <FunnelChart data={funnel} />
-                <TrendChart  data={trend}  />
-              </div>
-              <StageTimeChart data={stageTimes} />
-              <StoreRanking   data={filteredRanking} />
+          <div className="space-y-4 sm:space-y-6">
+            {/* Sub-abas do dashboard */}
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border w-fit">
+              <button
+                onClick={() => setDashboardTab("metricas")}
+                className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  dashboardTab === "metricas"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Métricas
+              </button>
+              <button
+                onClick={() => setDashboardTab("orcamentos")}
+                className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  dashboardTab === "orcamentos"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Orçamentos
+              </button>
             </div>
-          )
+
+            {dashboardTab === "metricas" ? (
+              isVendedor ? (
+                <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
+              ) : (
+                <div className="space-y-4 sm:space-y-6">
+                  {!isAdmin && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
+                      <Store className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="text-muted-foreground">
+                        Visualizando dados de{" "}
+                        <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
+                        sob sua responsabilidade.
+                      </span>
+                    </div>
+                  )}
+                  <KPICards data={kpis} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FunnelChart data={funnel} />
+                    <TrendChart  data={trend}  />
+                  </div>
+                  <StageTimeChart data={stageTimes} />
+                  <StoreRanking   data={filteredRanking} />
+                </div>
+              )
+            ) : (
+              <OrcamentosPage />
+            )}
+          </div>
         ) : page === "stores" ? (
           <StoresPage readOnly={!isAdmin} />
         ) : (

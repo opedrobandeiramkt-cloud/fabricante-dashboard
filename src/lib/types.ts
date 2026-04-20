@@ -106,6 +106,35 @@ export interface GoalData {
   monthLabel: string;
 }
 
+// ─── Orçamentos ──────────────────────────────────────────────────────────────
+
+export interface OrcamentoItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export type OrcamentoStatus = "rascunho" | "enviado" | "em_negociacao" | "ganho";
+
+export interface Orcamento {
+  id: string;
+  numero: string;           // ORC-0001
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  storeId: string;
+  vendedorId: string;
+  vendedorName: string;
+  items: OrcamentoItem[];
+  totalValue: number;
+  status: OrcamentoStatus;
+  notes?: string;
+  createdAt: string;        // ISO 8601
+  updatedAt: string;        // ISO 8601
+  wonAt?: string;           // ISO 8601 — preenchido ao marcar como ganho
+}
+
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export type Period = "7d" | "30d" | "90d" | "12m";

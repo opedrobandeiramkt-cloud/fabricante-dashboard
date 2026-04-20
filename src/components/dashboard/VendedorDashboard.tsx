@@ -1,8 +1,9 @@
-import { TrendingUp, TrendingDown, Users, Trophy, Timer, BarChart3, Zap } from "lucide-react";
+import { TrendingUp, TrendingDown, Users, Trophy, Timer, BarChart3, Zap, CircleDollarSign } from "lucide-react";
 import type { KPIData } from "@/lib/types";
 
 interface Props {
   kpis: KPIData;
+  orcamentosRevenue?: number;
 }
 
 interface CardProps {
@@ -64,7 +65,13 @@ function formatResponseTime(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-export function VendedorDashboard({ kpis }: Props) {
+function formatBRL(n: number): string {
+  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  if (n >= 1_000) return `R$ ${(n / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}K`;
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export function VendedorDashboard({ kpis, orcamentosRevenue = 0 }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <KPICard
@@ -105,6 +112,16 @@ export function VendedorDashboard({ kpis }: Props) {
         icon={<Zap className="h-4 w-4" />}
         accent="warning"
       />
+      {orcamentosRevenue > 0 && (
+        <KPICard
+          title="Receita Gerada (Orçamentos)"
+          value={formatBRL(orcamentosRevenue)}
+          delta={0}
+          deltaLabel=" no período"
+          icon={<CircleDollarSign className="h-4 w-4" />}
+          accent="success"
+        />
+      )}
     </div>
   );
 }
