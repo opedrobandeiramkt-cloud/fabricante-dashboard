@@ -64,30 +64,33 @@ export const defaultPoolSizes: PoolSize[] = [
   { id: "ibiza-g", modelId: "ibiza", dimensions: "9,00 x 4,50 x 1,60", area: "40,50 m²", price: 68000, semiPastilha: false },
 ];
 
-export function loadPoolModels(): PoolModel[] {
+const modelsKey = (storeId?: string) => storeId ? `igui-pool-models-${storeId}` : "igui-pool-models";
+const sizesKey  = (storeId?: string) => storeId ? `igui-pool-sizes-${storeId}`  : "igui-pool-sizes";
+
+export function loadPoolModels(storeId?: string): PoolModel[] {
   try {
-    const stored = localStorage.getItem("igui-pool-models");
+    const stored = localStorage.getItem(modelsKey(storeId));
     return stored ? JSON.parse(stored) : defaultPoolModels;
   } catch {
     return defaultPoolModels;
   }
 }
 
-export function savePoolModels(models: PoolModel[]) {
-  localStorage.setItem("igui-pool-models", JSON.stringify(models));
+export function savePoolModels(models: PoolModel[], storeId?: string) {
+  localStorage.setItem(modelsKey(storeId), JSON.stringify(models));
 }
 
-export function loadPoolSizes(): PoolSize[] {
+export function loadPoolSizes(storeId?: string): PoolSize[] {
   try {
-    const stored = localStorage.getItem("igui-pool-sizes");
+    const stored = localStorage.getItem(sizesKey(storeId));
     return stored ? JSON.parse(stored) : defaultPoolSizes;
   } catch {
     return defaultPoolSizes;
   }
 }
 
-export function savePoolSizes(sizes: PoolSize[]) {
-  localStorage.setItem("igui-pool-sizes", JSON.stringify(sizes));
+export function savePoolSizes(sizes: PoolSize[], storeId?: string) {
+  localStorage.setItem(sizesKey(storeId), JSON.stringify(sizes));
 }
 
 export const standardItems: SerieItem[] = [

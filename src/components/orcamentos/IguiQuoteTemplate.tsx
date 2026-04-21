@@ -431,12 +431,13 @@ function PayRow({ label, value }: { label: string; value: string }) {
 
 interface IguiQuoteTemplateProps {
   data: QuoteFormData;
+  storeId?: string;
 }
 
 export const IguiQuoteTemplate = forwardRef<HTMLDivElement, IguiQuoteTemplateProps>(
-  ({ data }, ref) => {
-    const allModels = loadPoolModels();
-    const allSizes  = loadPoolSizes();
+  ({ data, storeId }, ref) => {
+    const allModels = loadPoolModels(storeId);
+    const allSizes  = loadPoolSizes(storeId);
     const model = allModels.find((m) => m.id === data.poolModelId);
     const size  = allSizes.find((s) => s.id === data.poolSizeId);
     if (!model || !size) return null;

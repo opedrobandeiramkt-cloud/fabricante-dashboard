@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FileText, History, Waves, Plus, Pencil, Trophy, X, ChevronDown, Trash2 } from "lucide-react";
 import { useOrcamentos } from "@/contexts/OrcamentosContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,10 +49,15 @@ export function OrcamentosPage() {
   const [confirmWonId, setConfirmWonId] = useState<string | null>(null);
   const quoteRef = useRef<HTMLDivElement>(null);
 
+  // Loja do usuário logado (para salvar orçamentos)
   const storeId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
   const storeKind = stores.find((s) => s.id === storeId)?.storeType ?? "splash";
   const vendedorId = user?.id ?? "";
   const vendedorName = user?.name ?? "";
+
+  // Loja selecionada no catálogo de Piscinas
+  // Vendedor: fixo na sua loja. Admin/fabricante: pode escolher qualquer loja.
+  const [catalogStoreId, setCatalogStoreId] = useState<string>(storeId);
 
   // ── NOVO ORÇAMENTO ─────────────────────────────────────────────────────────
   async function handleGenerate(data: QuoteFormData) {
@@ -135,8 +140,8 @@ export function OrcamentosPage() {
   const pendingCount = quotes.filter((q) => q.status === "pendente").length;
 
   // ── PISCINAS ───────────────────────────────────────────────────────────────
-  const [models, setModels] = useState<PoolModel[]>(() => loadPoolModels());
-  const [sizes, setSizes] = useState<PoolSize[]>(() => loadPoolSizes());
+  const [models, setModels] = useState<PoolModel[]>(() => loadPoolModels(storeId));
+  const [sizes, setSizes] = useState<PoolSize[]>(() => loadPoolSizes(storeId));
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [showModelForm, setShowModelForm] = useState(false);
   const [showSizeForm, setShowSizeForm] = useState(false);
@@ -145,17 +150,24 @@ export function OrcamentosPage() {
   const [modelForm, setModelForm] = useState({ name: "", line: "" });
   const [sizeForm, setSizeForm] = useState({ dimensions: "", area: "", price: "" });
 
+  // Recarrega catálogo sempre que a loja selecionada mudar
+  useEffect(() => {
+    setModels(loadPoolModels(catalogStoreId));
+    setSizes(loadPoolSizes(catalogStoreId));
+    setSelectedModelId("");
+  }, [catalogStoreId]);
+
   function refreshCatalog() {
-    setModels(loadPoolModels());
-    setSizes(loadPoolSizes());
+    setModels(loadPoolModels(catalogStoreId));
+    setSizes(loadPoolSizes(catalogStoreId));
   }
 
   function handleSaveModel() {
     if (!modelForm.name || !modelForm.line) return;
     if (editingModel) {
-      savePoolModels(models.map((m) => m.id === editingModel.id ? { ...m, ...modelForm } : m));
+      savePoolModels(models.map((m) => m.id === editingModel.id ? { ...m, ...modelForm } : m), catalogStoreId);
     } else {
-      savePoolModels([...models, { id: crypto.randomUUID(), name: modelForm.name, line: modelForm.line }]);
+      savePoolModels([...models, { id: crypto.randomUUID(), name: modelForm.name, line: modelForm.line }], catalogStoreId);
     }
     refreshCatalog();
     setShowModelForm(false);
@@ -165,8 +177,8 @@ export function OrcamentosPage() {
 
   function handleDeleteModel(id: string) {
     if (!window.confirm("Excluir este modelo? Os tamanhos vinculados também serão removidos.")) return;
-    savePoolModels(models.filter((m) => m.id !== id));
-    savePoolSizes(sizes.filter((s) => s.modelId !== id));
+    savePoolModels(models.filter((m) => m.id !== id), catalogStoreId);
+    savePoolSizes(sizes.filter((s) => s.modelId !== id), catalogStoreId);
     refreshCatalog();
     if (selectedModelId === id) setSelectedModelId("");
   }
@@ -177,13 +189,13 @@ export function OrcamentosPage() {
       savePoolSizes(sizes.map((s) => s.id === editingSize.id
         ? { ...s, dimensions: sizeForm.dimensions, area: sizeForm.area, price: parseFloat(sizeForm.price) || 0 }
         : s
-      ));
+      ), catalogStoreId);
     } else {
       savePoolSizes([...sizes, {
         id: crypto.randomUUID(), modelId: selectedModelId,
         dimensions: sizeForm.dimensions, area: sizeForm.area,
         price: parseFloat(sizeForm.price) || 0, semiPastilha: false,
-      }]);
+      }], catalogStoreId);
     }
     refreshCatalog();
     setShowSizeForm(false);
@@ -193,14 +205,14 @@ export function OrcamentosPage() {
 
   function handleDeleteSize(id: string) {
     if (!window.confirm("Excluir este tamanho?")) return;
-    savePoolSizes(sizes.filter((s) => s.id !== id));
+    savePoolSizes(sizes.filter((s) => s.id !== id), catalogStoreId);
     refreshCatalog();
   }
 
   function handleResetCatalog() {
     if (!window.confirm("Restaurar o catálogo padrão? Todas as personalizações serão perdidas.")) return;
-    savePoolModels(defaultPoolModels);
-    savePoolSizes(defaultPoolSizes);
+    savePoolModels(defaultPoolModels, catalogStoreId);
+    savePoolSizes(defaultPoolSizes, catalogStoreId);
     refreshCatalog();
     setSelectedModelId("");
   }
@@ -215,7 +227,7 @@ export function OrcamentosPage() {
         {([
           { id: "historico" as Tab, icon: <History className="h-3.5 w-3.5" />, label: "Histórico" },
           { id: "novo" as Tab, icon: <Plus className="h-3.5 w-3.5" />, label: "Novo Orçamento" },
-          ...(!isVendedor ? [{ id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" }] : []),
+          { id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" },
         ] as const).map(({ id, icon, label }) => (
           <button
             key={id}
@@ -251,6 +263,7 @@ export function OrcamentosPage() {
             defaultSellerName={vendedorName}
             generating={generating}
             storeKind={storeKind}
+            storeId={storeId}
           />
         </div>
       )}
@@ -383,9 +396,29 @@ export function OrcamentosPage() {
       {/* ── PISCINAS ── */}
       {tab === "piscinas" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Gerencie o catálogo de modelos e tamanhos de piscinas iGUi.</p>
-            <button onClick={handleResetCatalog} className="text-xs text-muted-foreground hover:text-foreground underline">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {isVendedor
+                  ? "Gerencie os modelos e tamanhos de piscinas da sua loja."
+                  : "Gerencie o catálogo de piscinas por loja."}
+              </p>
+              {!isVendedor && stores.length > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs font-medium text-muted-foreground">Loja:</span>
+                  <select
+                    value={catalogStoreId}
+                    onChange={(e) => setCatalogStoreId(e.target.value)}
+                    className="text-xs px-2 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <button onClick={handleResetCatalog} className="text-xs text-muted-foreground hover:text-foreground underline self-start sm:self-auto">
               Restaurar padrão
             </button>
           </div>
@@ -571,8 +604,8 @@ export function OrcamentosPage() {
       {quoteData && (
         <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
           {storeKind === "igui"
-            ? <IguiQuoteTemplate ref={quoteRef} data={quoteData} />
-            : <QuoteTemplate ref={quoteRef} data={quoteData} />
+            ? <IguiQuoteTemplate ref={quoteRef} data={quoteData} storeId={storeId} />
+            : <QuoteTemplate ref={quoteRef} data={quoteData} storeId={storeId} />
           }
         </div>
       )}

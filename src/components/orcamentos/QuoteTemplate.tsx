@@ -11,6 +11,7 @@ import {
 
 interface QuoteTemplateProps {
   data: QuoteFormData;
+  storeId?: string;
 }
 
 const PINK        = "#E60A80";
@@ -37,9 +38,9 @@ const PAGE: React.CSSProperties = {
 };
 
 export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
-  ({ data }, ref) => {
-    const allModels   = loadPoolModels();
-    const allSizes    = loadPoolSizes();
+  ({ data, storeId }, ref) => {
+    const allModels   = loadPoolModels(storeId);
+    const allSizes    = loadPoolSizes(storeId);
     const model       = allModels.find((m) => m.id === data.poolModelId);
     const size        = allSizes.find((s) => s.id === data.poolSizeId);
     const heating     = data.heatingId ? heatingOptions.find((h) => h.id === data.heatingId) : null;
