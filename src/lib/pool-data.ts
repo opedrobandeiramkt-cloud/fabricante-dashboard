@@ -149,6 +149,7 @@ export interface QuoteFormData {
   clientCity: string;
   clientEmail: string;
   clientAddress: string;
+  clientPhone?: string;
   sellerName: string;
   poolModelId: string;
   poolSizeId: string;
@@ -156,6 +157,7 @@ export interface QuoteFormData {
   casaDeMaquinaId: string;
   includeClorador: boolean;
   proposalValue: number;
+  ceramicColor?: string;
 }
 
 export type QuoteStatus = "pendente" | "ganho" | "perdido";

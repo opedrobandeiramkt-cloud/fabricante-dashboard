@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Store, Save } from "lucide-react";
 import type { Store as StoreType } from "@/lib/types";
+import type { StoreType as StoreKind } from "@/lib/store-types";
 
 const BR_STATES = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA",
@@ -16,20 +17,22 @@ type FormData = {
   phone:      string;
   email:      string;
   active:     boolean;
+  storeKind:  StoreKind;
 };
 
 const EMPTY: FormData = {
   name: "", city: "", state: "SP",
-  externalId: "", phone: "", email: "", active: true,
+  externalId: "", phone: "", email: "", active: true, storeKind: "splash",
 };
 
 interface StoreFormModalProps {
-  store:    StoreType | null; // null = novo cadastro
-  onSave:   (data: Omit<StoreType, "id" | "createdAt">) => void;
-  onClose:  () => void;
+  store:            StoreType | null;
+  initialStoreKind?: StoreKind;
+  onSave:           (data: Omit<StoreType, "id" | "createdAt">, storeKind: StoreKind) => void;
+  onClose:          () => void;
 }
 
-export function StoreFormModal({ store, onSave, onClose }: StoreFormModalProps) {
+export function StoreFormModal({ store, initialStoreKind = "splash", onSave, onClose }: StoreFormModalProps) {
   const [form, setForm]     = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
@@ -43,12 +46,13 @@ export function StoreFormModal({ store, onSave, onClose }: StoreFormModalProps) 
         phone:      store.phone ?? "",
         email:      store.email ?? "",
         active:     store.active,
+        storeKind:  initialStoreKind,
       });
     } else {
-      setForm(EMPTY);
+      setForm({ ...EMPTY, storeKind: "splash" });
     }
     setErrors({});
-  }, [store]);
+  }, [store, initialStoreKind]);
 
   function set(field: keyof FormData, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -77,7 +81,7 @@ export function StoreFormModal({ store, onSave, onClose }: StoreFormModalProps) 
       phone:      form.phone.trim() || undefined,
       email:      form.email.trim() || undefined,
       active:     form.active,
-    });
+    }, form.storeKind);
   }
 
   return (
@@ -184,6 +188,18 @@ export function StoreFormModal({ store, onSave, onClose }: StoreFormModalProps) 
                 placeholder="ex: loja-sp-01"
                 className={inputCls(false)}
               />
+            </Field>
+
+            {/* Tipo de loja */}
+            <Field label="Tipo de Loja" hint="Define qual modelo de orçamento será usado">
+              <select
+                value={form.storeKind}
+                onChange={(e) => set("storeKind", e.target.value as StoreKind)}
+                className={inputCls(false)}
+              >
+                <option value="splash">Splash (linha padrão)</option>
+                <option value="igui">iGUi Cerâmica</option>
+              </select>
             </Field>
 
             {/* Status */}

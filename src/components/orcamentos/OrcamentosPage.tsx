@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useStores } from "@/contexts/StoresContext";
 import { QuoteForm } from "@/components/orcamentos/QuoteForm";
 import { QuoteTemplate } from "@/components/orcamentos/QuoteTemplate";
+import { IguiQuoteTemplate } from "@/components/orcamentos/IguiQuoteTemplate";
+import { getStoreType } from "@/lib/store-types";
 import {
   type QuoteFormData,
   type SavedQuote,
@@ -49,6 +51,7 @@ export function OrcamentosPage() {
   const quoteRef = useRef<HTMLDivElement>(null);
 
   const storeId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
+  const storeKind = getStoreType(storeId);
   const vendedorId = user?.id ?? "";
   const vendedorName = user?.name ?? "";
 
@@ -248,6 +251,7 @@ export function OrcamentosPage() {
             initialData={editingQuote?.formData}
             defaultSellerName={vendedorName}
             generating={generating}
+            storeKind={storeKind}
           />
         </div>
       )}
@@ -567,7 +571,10 @@ export function OrcamentosPage() {
       {/* Offscreen PDF template */}
       {quoteData && (
         <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-          <QuoteTemplate ref={quoteRef} data={quoteData} />
+          {storeKind === "igui"
+            ? <IguiQuoteTemplate ref={quoteRef} data={quoteData} />
+            : <QuoteTemplate ref={quoteRef} data={quoteData} />
+          }
         </div>
       )}
     </div>

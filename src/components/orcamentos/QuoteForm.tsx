@@ -14,6 +14,7 @@ interface QuoteFormProps {
   initialData?: QuoteFormData;
   defaultSellerName?: string;
   generating?: boolean;
+  storeKind?: "splash" | "igui";
 }
 
 const emptyForm = (sellerName = ""): QuoteFormData => ({
@@ -33,7 +34,7 @@ const emptyForm = (sellerName = ""): QuoteFormData => ({
 const inputCls = "w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 const labelCls = "block text-xs font-semibold text-muted-foreground mb-1.5";
 
-export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", generating }: QuoteFormProps) {
+export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", generating, storeKind = "splash" }: QuoteFormProps) {
   const [poolModels, setPoolModels] = useState<PoolModel[]>([]);
   const [poolSizes, setPoolSizes] = useState<PoolSize[]>([]);
   const [form, setForm] = useState<QuoteFormData>(initialData ?? emptyForm(defaultSellerName));
@@ -101,6 +102,12 @@ export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", gen
             <label className={labelCls}>Nome do Consultor *</label>
             <input required className={inputCls} value={form.sellerName} onChange={(e) => update("sellerName", e.target.value)} placeholder="Lucas Mendes" />
           </div>
+          {storeKind === "igui" && (
+            <div>
+              <label className={labelCls}>WhatsApp / Telefone</label>
+              <input className={inputCls} value={form.clientPhone ?? ""} onChange={(e) => update("clientPhone", e.target.value)} placeholder="(44) 99999-0000" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -129,6 +136,12 @@ export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", gen
               ))}
             </select>
           </div>
+          {storeKind === "igui" && (
+            <div>
+              <label className={labelCls}>Cor da Cerâmica</label>
+              <input className={inputCls} value={form.ceramicColor ?? ""} onChange={(e) => update("ceramicColor", e.target.value)} placeholder="ex: Areia, Branca, Azul Cristal" />
+            </div>
+          )}
         </div>
       </div>
 
