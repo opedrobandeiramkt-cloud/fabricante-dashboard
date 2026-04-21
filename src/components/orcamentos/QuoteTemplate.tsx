@@ -13,272 +13,322 @@ interface QuoteTemplateProps {
   data: QuoteFormData;
 }
 
-const PINK = "#E60A80";
-const BLUE = "#6FCAF1";
-const GREEN = "#A4CFAE";
-const INK = "#0f172a";
-const INK_MUTED = "#64748b";
-const SLATE_BG = "#f8fafc";
-const SLATE_BORDER = "#e2e8f0";
+const PINK        = "#E60A80";
+const NAVY        = "#1B2A4A";
+const INK         = "#1a1a2e";
+const INK_MUTED   = "#64748b";
+const SLATE_BG    = "#f8fafc";
+const SLATE_BD    = "#e2e8f0";
+const ROW_ALT     = "#f1f5f9";
 
-// Each page is captured individually via html2canvas + jsPDF (no CSS page-break tricks).
-// fontWeight stays at 700 — fontWeight 800 causes html2canvas to collapse spaces.
+// fontWeight stays ≤ 700 — fontWeight 800 causes html2canvas to collapse spaces.
 const PAGE: React.CSSProperties = {
-  width: "210mm",
-  minHeight: "297mm",
-  padding: "14mm 16mm",
+  width: 794,
+  minHeight: 1123,
+  padding: "44px 48px 36px",
   background: "#fff",
   color: INK,
-  fontFamily: "Nunito, Arial, sans-serif",
-  fontSize: "11px",
+  fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
+  fontSize: 11,
   lineHeight: 1.5,
   display: "flex",
   flexDirection: "column",
-  position: "relative",
   boxSizing: "border-box",
 };
 
 export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
   ({ data }, ref) => {
-    const allModels = loadPoolModels();
-    const allSizes = loadPoolSizes();
-    const model = allModels.find((m) => m.id === data.poolModelId);
-    const size = allSizes.find((s) => s.id === data.poolSizeId);
-    const heating = data.heatingId ? heatingOptions.find((h) => h.id === data.heatingId) : null;
+    const allModels   = loadPoolModels();
+    const allSizes    = loadPoolSizes();
+    const model       = allModels.find((m) => m.id === data.poolModelId);
+    const size        = allSizes.find((s) => s.id === data.poolSizeId);
+    const heating     = data.heatingId ? heatingOptions.find((h) => h.id === data.heatingId) : null;
     const casaMaquina = casasDeMaquina.find((c) => c.id === data.casaDeMaquinaId);
 
     if (!model || !size) return null;
 
-    const today = new Date();
-    const dateStr = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-    const quoteNumber = `SP-${today.getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
-    const validityDate = new Date(today);
-    validityDate.setDate(validityDate.getDate() + 7);
+    const today     = new Date();
+    const dateStr   = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const quoteNum  = `SP-${today.getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const validity  = new Date(today);
+    validity.setDate(validity.getDate() + 7);
+    const validStr  = validity.toLocaleDateString("pt-BR");
 
     const allItems = [...standardItems];
-    if (heating) allItems.push({ name: heating.name, qty: 1, description: heating.description });
+    if (heating)           allItems.push({ name: heating.name,         qty: 1, description: heating.description });
     if (data.includeClorador) allItems.push({ name: "Clorador Automático", qty: 1 });
 
     const dimParts = size.dimensions.split("x").map((s) => s.trim());
     const [comp, larg, prof] = [dimParts[0] ?? "—", dimParts[1] ?? "—", dimParts[2] ?? "—"];
 
-    const half = Math.ceil(allItems.length / 2);
-    const col1 = allItems.slice(0, half);
-    const col2 = allItems.slice(half);
-
     return (
       <div ref={ref} style={{ background: "#fff" }}>
 
-        {/* ══════ PAGE 1 — CAPA ══════ */}
+        {/* ══ PAGE 1 — CAPA ══ */}
         <div data-pdf-page="true" style={PAGE}>
-          <TricolorBar />
-          <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Capa" />
+          <PageHeader quoteNum={quoteNum} dateStr={dateStr} />
 
-          <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginTop: "28px" }}>
-            <div>
-              <SectionLabel color={BLUE}>Preparado Para</SectionLabel>
-              <div style={{ paddingLeft: "10px" }}>
-                <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>{data.clientName}</div>
-                <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px", lineHeight: 1.6 }}>
-                  {data.clientAddress && <>{data.clientAddress}<br /></>}
-                  {data.clientCity}
-                  {data.clientEmail && <><br />{data.clientEmail}</>}
-                </div>
+          {/* "PROPOSTA TÉCNICA & COMERCIAL" */}
+          <div style={{ fontSize: 9, fontWeight: 700, color: INK_MUTED, letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 20, marginBottom: 24 }}>
+            Proposta Técnica & Comercial
+          </div>
+
+          {/* Client + Consultant */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginBottom: 28 }}>
+            <div style={{ borderLeft: `3px solid #6FCAF1`, paddingLeft: 14 }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: "#6FCAF1", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>
+                Preparado Para
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: INK, lineHeight: 1.1, marginBottom: 6 }}>{data.clientName}</div>
+              <div style={{ fontSize: 11, color: INK_MUTED }}>
+                {data.clientCity}
+                {data.clientAddress && <><br />{data.clientAddress}</>}
+                {data.clientEmail   && <><br />{data.clientEmail}</>}
               </div>
             </div>
-            <div>
-              <SectionLabel color={PINK}>Consultor Responsável</SectionLabel>
-              <div style={{ paddingLeft: "10px" }}>
-                <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>{data.sellerName}</div>
-                <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px", lineHeight: 1.6 }}>
-                  Splash Piscinas iGUi<br />Revendedora Autorizada
-                </div>
+            <div style={{ borderLeft: `3px solid ${PINK}`, paddingLeft: 14 }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 8 }}>
+                Consultor Responsável
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: INK, lineHeight: 1.1, marginBottom: 6 }}>{data.sellerName}</div>
+              <div style={{ fontSize: 11, color: INK_MUTED }}>
+                Splash Piscinas iGUi<br />Revendedora Autorizada
               </div>
             </div>
-          </section>
+          </div>
 
-          <section style={{ background: SLATE_BG, border: `1px solid ${SLATE_BORDER}`, padding: "22px 24px", marginTop: "22px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
+          {/* Model card */}
+          <div style={{ background: SLATE_BG, border: `1px solid ${SLATE_BD}`, padding: "22px 24px", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <div>
-                <div style={{ fontSize: "9px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: INK_MUTED, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
                   Modelo Selecionado
                 </div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: INK, lineHeight: 1.1 }}>{`Piscina ${model.name}`}</div>
-                <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px" }}>
-                  {`Linha ${model.line} · Estrutura em fibra de vidro PRFV reforçado`}
-                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: INK, lineHeight: 1.1, marginBottom: 4 }}>{`Piscina ${model.name}`}</div>
+                <div style={{ fontSize: 10, color: INK_MUTED }}>{`Linha ${model.line} · Estrutura em fibra de vidro PRFV reforçado`}</div>
               </div>
-              <div style={{ background: PINK, color: "#fff", padding: "4px 10px", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+              <div style={{ background: PINK, color: "#fff", padding: "5px 12px", fontSize: 8, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", flexShrink: 0 }}>
                 {`Linha ${model.line}`}
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", borderTop: `1px solid ${SLATE_BORDER}`, paddingTop: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, borderTop: `1px solid ${SLATE_BD}`, paddingTop: 16 }}>
               <SpecCell label="Comprimento" value={comp} unit="m" />
-              <SpecCell label="Largura" value={larg} unit="m" />
+              <SpecCell label="Largura"     value={larg} unit="m" />
               <SpecCell label="Profundidade" value={prof} unit="m" />
             </div>
-          </section>
+          </div>
 
-          <section style={{ marginTop: "20px", background: `${PINK}0d`, border: `1px solid ${PINK}40`, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {/* Investment box — dark navy */}
+          <div style={{ background: NAVY, padding: "22px 28px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: "9px", fontWeight: 700, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
                 Investimento Total do Projeto
               </div>
-              <div style={{ fontSize: "9px", color: INK_MUTED, marginTop: "6px", maxWidth: "40ch" }}>
-                Inclui casco, equipamentos de série, frete e instalação completa. Orçamento válido por 7 dias corridos.
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, maxWidth: "38ch" }}>
+                Inclui casco, equipamentos de série, frete e instalação completa.<br />
+                Orçamento válido por 7 dias corridos.
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: PINK, lineHeight: 1, letterSpacing: "-0.02em" }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>
                 {formatCurrency(data.proposalValue)}
               </div>
-              <div style={{ fontSize: "9px", fontWeight: 700, color: INK, marginTop: "6px" }}>
+              <div style={{ fontSize: 10, color: PINK, marginTop: 6 }}>
                 Condições de pagamento facilitadas
               </div>
             </div>
-          </section>
+          </div>
 
           <div style={{ flex: 1 }} />
-          <Footer pageNum={1} pageTotal={4} />
+          <PageFooter pageNum={1} pageTotal={4} />
         </div>
 
-        {/* ══════ PAGE 2 — ESPECIFICAÇÕES ══════ */}
+        {/* ══ PAGE 2 — ESPECIFICAÇÕES ══ */}
         <div data-pdf-page="true" style={PAGE}>
-          <TricolorBar />
-          <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Especificações" />
+          <PageHeader quoteNum={quoteNum} dateStr={dateStr} />
 
-          <h2 style={{ fontSize: "20px", fontWeight: 700, color: INK, marginTop: "24px", marginBottom: "6px" }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: INK, margin: "24px 0 6px" }}>
             Detalhes técnicos da piscina
           </h2>
-          <p style={{ fontSize: "10px", color: INK_MUTED, marginBottom: "20px" }}>
+          <p style={{ fontSize: 11, color: INK_MUTED, margin: "0 0 20px" }}>
             Especificações completas do modelo selecionado e equipamentos auxiliares.
           </p>
 
-          <div style={{ border: `1px solid ${SLATE_BORDER}` }}>
-            <DetailRow label="Modelo" value={model.name} />
-            <DetailRow label="Linha" value={model.line} />
-            <DetailRow label="Dimensões (C × L × P)" value={`${size.dimensions} m`} />
-            <DetailRow label="Material" value="Fibra de vidro PRFV reforçado" />
-            <DetailRow label="Acabamento interno" value={size.semiPastilha ? `Semi-pastilhada${size.pastilhaSize ? ` (${size.pastilhaSize})` : ""}` : "Gel-coat brilhante"} />
-            <DetailRow label="Casa de máquinas" value={casaMaquina?.name ?? "—"} />
-            <DetailRow label="Aquecimento" value={heating?.name ?? "Não incluso"} />
-            <DetailRow label="Clorador automático" value={data.includeClorador ? "Incluso" : "Não incluso"} last />
+          <div style={{ border: `1px solid ${SLATE_BD}` }}>
+            <DetailRow label="Modelo"               value={model.name}                         shade />
+            <DetailRow label="Linha"                value={model.line}                          />
+            <DetailRow label="Dimensões (C × L × P)" value={`${comp} × ${larg} × ${prof} m`} shade />
+            <DetailRow label="Material"             value="Fibra de vidro PRFV reforçado"       />
+            <DetailRow label="Acabamento interno"   value={size.semiPastilha ? `Semi-pastilhada${size.pastilhaSize ? ` (${size.pastilhaSize})` : ""}` : "Gel-coat brilhante"} shade />
+            <DetailRow label="Casa de máquinas"     value={casaMaquina?.name ?? "—"}            />
+            <DetailRow label="Aquecimento"          value={heating?.name ?? "Não incluso"}     shade />
+            <DetailRow label="Clorador automático"  value={data.includeClorador ? "Incluso" : "Não incluso"} last />
           </div>
 
-          {casaMaquina && (
-            <div style={{ marginTop: "20px", background: `${BLUE}14`, borderLeft: `3px solid ${BLUE}`, padding: "14px 18px" }}>
-              <SectionLabel color={BLUE}>{casaMaquina.name}</SectionLabel>
-              <p style={{ fontSize: "10px", color: INK, lineHeight: 1.7, marginTop: "4px" }}>{casaMaquina.description}</p>
-            </div>
-          )}
-          {heating && (
-            <div style={{ marginTop: "12px", background: `${GREEN}26`, borderLeft: `3px solid ${GREEN}`, padding: "14px 18px" }}>
-              <SectionLabel color="#5b9b69">{heating.name}</SectionLabel>
-              <p style={{ fontSize: "10px", color: INK, lineHeight: 1.7, marginTop: "4px" }}>{heating.description}</p>
-            </div>
-          )}
+          {/* Equipment cards — side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: casaMaquina && heating ? "1fr 1fr" : "1fr", gap: 12, marginTop: 20 }}>
+            {casaMaquina && (
+              <div style={{ background: SLATE_BG, padding: "14px 16px" }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {casaMaquina.name}
+                </div>
+                <div style={{ fontSize: 10, color: INK, lineHeight: 1.6 }}>{casaMaquina.description}</div>
+              </div>
+            )}
+            {heating && (
+              <div style={{ background: SLATE_BG, padding: "14px 16px" }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {heating.name}
+                </div>
+                <div style={{ fontSize: 10, color: INK, lineHeight: 1.6 }}>{heating.description}</div>
+              </div>
+            )}
+          </div>
 
           <div style={{ flex: 1 }} />
-          <Footer pageNum={2} pageTotal={4} />
+          <PageFooter pageNum={2} pageTotal={4} />
         </div>
 
-        {/* ══════ PAGE 3 — ITENS DE SÉRIE ══════ */}
+        {/* ══ PAGE 3 — ITENS DE SÉRIE ══ */}
         <div data-pdf-page="true" style={PAGE}>
-          <TricolorBar />
-          <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Itens de Série" />
+          <PageHeader quoteNum={quoteNum} dateStr={dateStr} />
 
-          <h2 style={{ fontSize: "20px", fontWeight: 700, color: INK, marginTop: "24px", marginBottom: "6px" }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: INK, margin: "24px 0 6px" }}>
             Itens inclusos no projeto
           </h2>
-          <p style={{ fontSize: "10px", color: INK_MUTED, marginBottom: "16px" }}>
+          <p style={{ fontSize: 11, color: INK_MUTED, margin: "0 0 16px" }}>
             Todos os equipamentos e serviços abaixo estão inclusos no valor da proposta.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px", flex: 1 }}>
-            {[col1, col2].map((col, ci) => (
-              <div key={ci}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", borderBottom: `1.5px solid ${PINK}`, paddingBottom: "6px", marginBottom: "2px" }}>
-                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Item</span>
-                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", width: "32px" }}>Qtd</span>
-                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "right", width: "48px" }}>Status</span>
-                </div>
-                {col.map((item, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", borderBottom: `1px solid ${SLATE_BORDER}`, padding: "5px 0" }}>
-                    <div style={{ fontSize: "9px", fontWeight: 700, color: INK, paddingRight: "6px" }}>{item.name}</div>
-                    <div style={{ fontSize: "9px", color: INK_MUTED, fontWeight: 600, width: "32px", textAlign: "center" }}>{item.qty}</div>
-                    <div style={{ width: "48px", textAlign: "right" }}>
-                      <span style={{ fontSize: "7.5px", fontWeight: 700, padding: "2px 5px", background: `${GREEN}40`, color: "#3d7a4c", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                        Incluso
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <Footer pageNum={3} pageTotal={4} />
-        </div>
-
-        {/* ══════ PAGE 4 — TERMOS E PAGAMENTO ══════ */}
-        <div data-pdf-page="true" style={PAGE}>
-          <TricolorBar />
-          <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Termos e Pagamento" />
-
-          <section style={{ marginTop: "20px", background: INK, color: "#fff", padding: "22px 28px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: "9px", fontWeight: 700, color: GREEN, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: "6px" }}>
-                  Investimento Total do Projeto
-                </div>
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)" }}>{`Para ${data.clientName}`}</div>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>
-                {formatCurrency(data.proposalValue)}
-              </div>
-            </div>
-          </section>
-
-          <section style={{ marginTop: "22px" }}>
-            <SectionLabel color={PINK}>Condições de Pagamento</SectionLabel>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "10px" }}>
-              <PaymentCard title="À vista" subtitle="Desconto especial" highlight color={PINK} />
-              <PaymentCard title="Cartão de crédito" subtitle="Em até 12x sem juros" color={BLUE} />
-              <PaymentCard title="Boleto bancário" subtitle="Parcelado conforme negociação" color={GREEN} />
-            </div>
-            <p style={{ fontSize: "9px", color: INK_MUTED, marginTop: "8px", lineHeight: 1.6 }}>
-              Demais condições podem ser negociadas diretamente com o consultor. Consulte prazos e taxas atualizados no fechamento.
-            </p>
-          </section>
-
-          <section style={{ marginTop: "18px", background: SLATE_BG, borderLeft: `3px solid ${BLUE}`, padding: "12px 16px" }}>
-            <SectionLabel color={BLUE}>Validade</SectionLabel>
-            <p style={{ fontSize: "10px", color: INK, lineHeight: 1.7, marginTop: "4px" }}>
-              {`Este orçamento é válido até `}<strong>{validityDate.toLocaleDateString("pt-BR")}</strong>{` (7 dias corridos a partir da emissão). Após essa data, valores e disponibilidade estão sujeitos a alteração.`}
-            </p>
-          </section>
-
-          <section style={{ marginTop: "16px" }}>
-            <SectionLabel color={INK_MUTED}>Termos Gerais</SectionLabel>
-            <ul style={{ fontSize: "9.5px", color: INK_MUTED, lineHeight: 1.7, marginTop: "6px", paddingLeft: "14px" }}>
-              <li>O valor inclui escavação padrão, instalação, frete e itens de série relacionados.</li>
-              <li>Despesas adicionais (rocha, lençol freático, entulho excedente) serão orçadas separadamente.</li>
-              <li>Cliente é responsável por fornecer ponto de água, energia e acesso adequado para entrega.</li>
-              <li>Prazo médio de instalação: 15 a 30 dias úteis após confirmação do pedido e preparo do terreno.</li>
-            </ul>
-          </section>
-
-          <section style={{ marginTop: "22px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px" }}>
-            <div style={{ borderTop: `1px solid ${INK}`, paddingTop: "8px", fontSize: "9px", color: INK_MUTED, textAlign: "center" }}>
-              {data.clientName}<br /><span style={{ fontSize: "8px" }}>Cliente</span>
-            </div>
-            <div style={{ borderTop: `1px solid ${INK}`, paddingTop: "8px", fontSize: "9px", color: INK_MUTED, textAlign: "center" }}>
-              {data.sellerName}<br /><span style={{ fontSize: "8px" }}>Consultor Splash Piscinas</span>
-            </div>
-          </section>
+          {/* Single full-width table */}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: NAVY }}>
+                <th style={{ padding: "9px 14px", textAlign: "left", fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  Item
+                </th>
+                <th style={{ padding: "9px 14px", textAlign: "center", fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase", width: 52 }}>
+                  Qtd
+                </th>
+                <th style={{ padding: "9px 14px", textAlign: "center", fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase", width: 80 }}>
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {allItems.map((item, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : ROW_ALT }}>
+                  <td style={{ padding: "7px 14px", fontSize: 10, fontWeight: 700, color: INK, borderBottom: `1px solid ${SLATE_BD}` }}>
+                    {item.name}
+                  </td>
+                  <td style={{ padding: "7px 14px", fontSize: 10, color: INK_MUTED, textAlign: "center", borderBottom: `1px solid ${SLATE_BD}` }}>
+                    {item.qty}
+                  </td>
+                  <td style={{ padding: "7px 14px", textAlign: "center", borderBottom: `1px solid ${SLATE_BD}` }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      Incluso
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           <div style={{ flex: 1 }} />
-          <Footer pageNum={4} pageTotal={4} />
+          <PageFooter pageNum={3} pageTotal={4} />
+        </div>
+
+        {/* ══ PAGE 4 — TERMOS E PAGAMENTO ══ */}
+        <div data-pdf-page="true" style={PAGE}>
+          <PageHeader quoteNum={quoteNum} dateStr={dateStr} />
+
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: INK, margin: "24px 0 20px" }}>
+            Termos e Pagamento
+          </h2>
+
+          {/* Investment box dark */}
+          <div style={{ background: NAVY, padding: "22px 28px", marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>
+                Investimento Total do Projeto
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{`Para ${data.clientName}`}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                {formatCurrency(data.proposalValue)}
+              </div>
+              <div style={{ fontSize: 10, color: PINK, marginTop: 6 }}>Condições de pagamento facilitadas</div>
+            </div>
+          </div>
+
+          {/* Payment conditions */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 10 }}>
+              Condições de Pagamento
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", border: `1px solid ${SLATE_BD}` }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: "9px 14px", textAlign: "left", fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: "0.12em", textTransform: "uppercase", background: PINK, width: "33%" }}>
+                    À Vista
+                  </th>
+                  <th style={{ padding: "9px 14px", textAlign: "left", fontSize: 9, fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", borderLeft: `1px solid ${SLATE_BD}`, width: "33%" }}>
+                    Cartão de Crédito
+                  </th>
+                  <th style={{ padding: "9px 14px", textAlign: "left", fontSize: 9, fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", borderLeft: `1px solid ${SLATE_BD}`, width: "34%" }}>
+                    Boleto Bancário
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "10px 14px", fontSize: 12, fontWeight: 700, color: INK }}>Desconto especial</td>
+                  <td style={{ padding: "10px 14px", fontSize: 12, fontWeight: 700, color: INK, borderLeft: `1px solid ${SLATE_BD}` }}>Em até 3× sem juros</td>
+                  <td style={{ padding: "10px 14px", fontSize: 12, fontWeight: 700, color: INK, borderLeft: `1px solid ${SLATE_BD}` }}>Parcelado conforme negociação</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ fontSize: 9, color: INK_MUTED, marginTop: 8, lineHeight: 1.6 }}>
+              Demais condições podem ser negociadas diretamente com o consultor. Consulte prazos e taxas atualizados no fechamento.
+            </p>
+          </div>
+
+          {/* Validity + Installation side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+            <div style={{ background: SLATE_BG, padding: "14px 16px", border: `1px solid ${SLATE_BD}` }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
+                Validade
+              </div>
+              <p style={{ fontSize: 10, color: INK, lineHeight: 1.7, margin: 0 }}>
+                {`Este orçamento é válido até `}<strong>{validStr}</strong>{` (7 dias corridos a partir da emissão). Após essa data, valores e disponibilidade estão sujeitos a alteração.`}
+              </p>
+            </div>
+            <div style={{ background: SLATE_BG, padding: "14px 16px", border: `1px solid ${SLATE_BD}` }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
+                Prazo de Instalação
+              </div>
+              <p style={{ fontSize: 10, color: INK, lineHeight: 1.7, margin: 0 }}>
+                Prazo médio de <strong>15 a 30 dias úteis</strong> após confirmação do pedido e preparo do terreno pelo cliente.
+              </p>
+            </div>
+          </div>
+
+          {/* Terms */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: PINK, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 10 }}>
+              Termos Gerais
+            </div>
+            <ul style={{ margin: 0, padding: "0 0 0 18px", fontSize: 10, color: INK_MUTED, lineHeight: 1.8 }}>
+              <li>O valor inclui escavação padrão, instalação, frete e itens de série relacionados.</li>
+              <li>Despesas adicionais (rocha, lençol freático, entulho excedente) serão orçadas separadamente.</li>
+              <li>O cliente é responsável por fornecer ponto de água, energia e acesso adequado para entrega.</li>
+              <li>Prazo médio de instalação: 15 a 30 dias úteis após confirmação do pedido e preparo do terreno.</li>
+            </ul>
+          </div>
+
+          <div style={{ flex: 1 }} />
+          <PageFooter pageNum={4} pageTotal={4} withContact />
         </div>
 
       </div>
@@ -288,85 +338,54 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
 
 QuoteTemplate.displayName = "QuoteTemplate";
 
-// ═══════════ Sub-components ═══════════
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TricolorBar() {
+function PageHeader({ quoteNum, dateStr }: { quoteNum: string; dateStr: string }) {
   return (
-    <div style={{
-      position: "absolute", top: 0, left: 0, right: 0, height: "4px",
-      background: `linear-gradient(90deg, ${PINK} 0%, ${PINK} 33.33%, ${BLUE} 33.33%, ${BLUE} 66.66%, ${GREEN} 66.66%, ${GREEN} 100%)`,
-    }} />
-  );
-}
-
-function Header({ dateStr, quoteNumber, pageLabel }: {
-  dateStr: string; quoteNumber: string; pageLabel: string;
-}) {
-  return (
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `1.5px solid ${BLUE}40`, paddingBottom: "12px", marginTop: "8px" }}>
-      <div>
-        <h1 style={{ fontSize: "22px", fontWeight: 700, color: INK, letterSpacing: "-0.02em", margin: 0, textTransform: "uppercase" }}>
-          {"Splash"}<span style={{ color: PINK }}>{"."}</span>
-        </h1>
-        <p style={{ fontSize: "8px", fontWeight: 700, color: BLUE, letterSpacing: "0.2em", textTransform: "uppercase", margin: "4px 0 0 0" }}>
-          {pageLabel === "Capa" ? "Proposta Técnica & Comercial" : pageLabel}
-        </p>
-      </div>
-      <div style={{ textAlign: "right" }}>
-        <div style={{ fontSize: "8px", color: INK_MUTED, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "3px" }}>Referência</div>
-        <div style={{ fontSize: "10px", fontWeight: 700, color: INK }}>{quoteNumber}</div>
-        <div style={{ fontSize: "8px", color: INK_MUTED, marginTop: "2px" }}>{dateStr}</div>
-      </div>
+    <header style={{ display: "flex", alignItems: "baseline", gap: 0, borderBottom: `1px solid ${SLATE_BD}`, paddingBottom: 10 }}>
+      <span style={{ fontSize: 20, fontWeight: 700, color: "#E60A80", letterSpacing: "-0.01em" }}>Splash</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>{`.${quoteNum} · ${dateStr}`}</span>
     </header>
   );
 }
 
-function Footer({ pageNum, pageTotal }: { pageNum: number; pageTotal: number }) {
+function PageFooter({ pageNum, pageTotal, withContact }: { pageNum: number; pageTotal: number; withContact?: boolean }) {
   return (
-    <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${SLATE_BORDER}`, paddingTop: "8px", marginTop: "8px" }}>
-      <p style={{ fontSize: "7.5px", color: INK_MUTED, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-        Splash Piscinas — Revendedora Autorizada iGUi
+    <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${SLATE_BD}`, paddingTop: 8, marginTop: 8 }}>
+      <p style={{ fontSize: 8, color: "#64748b", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>
+        {withContact
+          ? "Splash Piscinas · Revendedora Autorizada iGUi · splashpiscinas.com · 0800 877 5274"
+          : "SPLASH PISCINAS · Revendedora Autorizada iGUi"}
       </p>
-      <p style={{ fontSize: "7.5px", fontWeight: 700, color: INK, letterSpacing: "0.18em", margin: 0 }}>
-        {`PÁG ${String(pageNum).padStart(2, "0")} / ${String(pageTotal).padStart(2, "0")}`}
+      <p style={{ fontSize: 8, color: "#1a1a2e", fontWeight: 700, margin: 0 }}>
+        {`Pág. ${pageNum} / ${pageTotal}`}
       </p>
     </footer>
-  );
-}
-
-function SectionLabel({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <h3 style={{ fontSize: "8px", fontWeight: 700, color, letterSpacing: "0.18em", textTransform: "uppercase", borderLeft: `2px solid ${color}`, paddingLeft: "7px", margin: "0 0 8px 0" }}>
-      {children}
-    </h3>
   );
 }
 
 function SpecCell({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div>
-      <div style={{ fontSize: "7.5px", color: INK_MUTED, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "3px", fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>
-        {value}{" "}<span style={{ fontSize: "10px", fontWeight: 600, color: INK_MUTED }}>{unit}</span>
+      <div style={{ fontSize: 8, color: "#64748b", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e" }}>
+        {value}{" "}<span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{unit}</span>
       </div>
     </div>
   );
 }
 
-function DetailRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function DetailRow({ label, value, shade, last }: { label: string; value: string; shade?: boolean; last?: boolean }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", padding: "8px 14px", borderBottom: last ? "none" : `1px solid ${SLATE_BORDER}`, fontSize: "10px" }}>
-      <div style={{ color: INK_MUTED, fontWeight: 600 }}>{label}</div>
-      <div style={{ color: INK, fontWeight: 700 }}>{value}</div>
-    </div>
-  );
-}
-
-function PaymentCard({ title, subtitle, color, highlight }: { title: string; subtitle: string; color: string; highlight?: boolean }) {
-  return (
-    <div style={{ border: `1px solid ${color}${highlight ? "" : "40"}`, background: highlight ? `${color}14` : "#fff", padding: "12px 14px" }}>
-      <div style={{ fontSize: "7.5px", fontWeight: 700, color, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "5px" }}>{title}</div>
-      <div style={{ fontSize: "9.5px", color: INK, fontWeight: 600 }}>{subtitle}</div>
+    <div style={{
+      display: "grid", gridTemplateColumns: "200px 1fr",
+      padding: "9px 14px",
+      borderBottom: last ? "none" : `1px solid ${SLATE_BD}`,
+      background: shade ? ROW_ALT : "#fff",
+      fontSize: 11,
+    }}>
+      <div style={{ color: "#64748b", fontWeight: 600 }}>{label}</div>
+      <div style={{ color: "#1a1a2e", fontWeight: 700 }}>{value}</div>
     </div>
   );
 }
