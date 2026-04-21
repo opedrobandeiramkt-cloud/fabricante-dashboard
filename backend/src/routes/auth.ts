@@ -4,10 +4,16 @@ import { Resend } from "resend";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword } from "../lib/crypto.js";
 
-const resend      = new Resend(process.env.RESEND_API_KEY);
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const FROM_EMAIL   = process.env.FROM_EMAIL    ?? "noreply@igui.com.br";
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+// Lazy: só instancia quando houver chave, evita crash no boot se a env estiver ausente
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 function userToDto(user: { id: string; name: string; email: string; role: string; storeIds: unknown; avatarInitials: string; salesGoal?: number | null; crmUserId?: string | null }) {
   return {
@@ -235,6 +241,11 @@ export async function authRoutes(app: FastifyInstance) {
     const resetLink = `${FRONTEND_URL}?reset=${token}`;
 
     try {
+      const resend = getResend();
+      if (!resend) {
+        app.log.warn("RESEND_API_KEY não configurada — e-mail de reset não enviado");
+        return reply.code(200).send({ ok: true });
+      }
       await resend.emails.send({
         from:    FROM_EMAIL,
         to:      normalizedEmail,
