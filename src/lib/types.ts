@@ -32,6 +32,7 @@ export interface Store {
   email?: string;
   active: boolean;
   createdAt: string; // ISO 8601
+  storeType?: "splash" | "igui"; // template de orçamento
 }
 
 // ─── Eventos ─────────────────────────────────────────────────────────────────

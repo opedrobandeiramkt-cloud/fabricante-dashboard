@@ -6,7 +6,7 @@ import {
 import { StoreFormModal } from "./StoreFormModal";
 import { useStores } from "@/hooks/useStores";
 import type { Store as StoreType } from "@/lib/types";
-import { getStoreType, setStoreType, type StoreType as StoreKind } from "@/lib/store-types";
+import type { StoreType as StoreKind } from "@/lib/store-types";
 
 interface StoresPageProps {
   readOnly?: boolean;
@@ -33,12 +33,11 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
   });
 
   async function handleSave(data: Omit<StoreType, "id" | "createdAt">, storeKind: StoreKind) {
+    const withType = { ...data, storeType: storeKind };
     if (modalStore === "new") {
-      const created = await addStore(data);
-      setStoreType(created.id, storeKind);
+      await addStore(withType);
     } else if (modalStore) {
-      await updateStore(modalStore.id, data);
-      setStoreType(modalStore.id, storeKind);
+      await updateStore(modalStore.id, withType);
     }
     setModalStore(null);
   }
@@ -139,7 +138,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
       {!readOnly && modalStore !== null && (
         <StoreFormModal
           store={modalStore === "new" ? null : modalStore}
-          initialStoreKind={modalStore !== "new" ? getStoreType(modalStore.id) : "splash"}
+          initialStoreKind={modalStore !== "new" ? (modalStore.storeType ?? "splash") : "splash"}
           onSave={handleSave}
           onClose={() => setModalStore(null)}
         />

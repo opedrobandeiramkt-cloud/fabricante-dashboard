@@ -70,6 +70,7 @@ export function StoresProvider({ children }: { children: ReactNode }) {
               externalId: s.externalId,
               active:     local?.active     ?? true,
               createdAt:  local?.createdAt  ?? new Date().toISOString(),
+              storeType:  local?.storeType  ?? "splash",
             };
           });
         setStores(apiStores);

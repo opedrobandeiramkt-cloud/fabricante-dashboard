@@ -6,7 +6,6 @@ import { useStores } from "@/contexts/StoresContext";
 import { QuoteForm } from "@/components/orcamentos/QuoteForm";
 import { QuoteTemplate } from "@/components/orcamentos/QuoteTemplate";
 import { IguiQuoteTemplate } from "@/components/orcamentos/IguiQuoteTemplate";
-import { getStoreType } from "@/lib/store-types";
 import {
   type QuoteFormData,
   type SavedQuote,
@@ -51,7 +50,7 @@ export function OrcamentosPage() {
   const quoteRef = useRef<HTMLDivElement>(null);
 
   const storeId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
-  const storeKind = getStoreType(storeId);
+  const storeKind = stores.find((s) => s.id === storeId)?.storeType ?? "splash";
   const vendedorId = user?.id ?? "";
   const vendedorName = user?.name ?? "";
 
