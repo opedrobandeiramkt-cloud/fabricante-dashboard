@@ -78,16 +78,34 @@ export function OrcamentosPage() {
     setTimeout(async () => {
       if (!quoteRef.current) { setGenerating(false); return; }
       try {
-        const html2pdf = (await import("html2pdf.js")).default;
-        const opts = {
-          margin: 0,
-          filename: `orcamento-${data.clientName.replace(/\s+/g, "-").toLowerCase()}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, windowWidth: 794 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
-        };
-        await html2pdf().set(opts as never).from(quoteRef.current).save();
+        // Aguarda fontes carregarem para evitar problemas de espaçamento
+        await document.fonts.ready;
+
+        const [{ jsPDF }, html2canvasMod] = await Promise.all([
+          import("jspdf"),
+          import("html2canvas"),
+        ]);
+        const html2canvas = html2canvasMod.default;
+
+        // Renderiza cada página individualmente — elimina páginas em branco
+        const pageEls = quoteRef.current.querySelectorAll<HTMLElement>("[data-pdf-page='true']");
+        const pdf = new jsPDF("portrait", "mm", "a4");
+
+        for (let i = 0; i < pageEls.length; i++) {
+          const canvas = await html2canvas(pageEls[i], {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: pageEls[i].offsetWidth,
+            height: pageEls[i].offsetHeight,
+          });
+          const imgData = canvas.toDataURL("image/jpeg", 0.98);
+          if (i > 0) pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+        }
+
+        const filename = `orcamento-${data.clientName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+        pdf.save(filename);
       } catch (err) {
         console.error("Erro ao gerar PDF:", err);
       } finally {

@@ -21,16 +21,15 @@ const INK_MUTED = "#64748b";
 const SLATE_BG = "#f8fafc";
 const SLATE_BORDER = "#e2e8f0";
 
-// Each page: exact A4 height, overflow hidden — prevents html2pdf from generating blank pages.
-// Page breaks are handled by explicit <div style="page-break-after:always"> between pages.
+// Each page is captured individually via html2canvas + jsPDF (no CSS page-break tricks).
+// fontWeight stays at 700 — fontWeight 800 causes html2canvas to collapse spaces.
 const PAGE: React.CSSProperties = {
   width: "210mm",
-  height: "297mm",
-  overflow: "hidden",
+  minHeight: "297mm",
   padding: "14mm 16mm",
   background: "#fff",
   color: INK,
-  fontFamily: "'Nunito', sans-serif",
+  fontFamily: "Nunito, Arial, sans-serif",
   fontSize: "11px",
   lineHeight: 1.5,
   display: "flex",
@@ -38,8 +37,6 @@ const PAGE: React.CSSProperties = {
   position: "relative",
   boxSizing: "border-box",
 };
-
-const BREAK: React.CSSProperties = { pageBreakAfter: "always", height: 0, display: "block" };
 
 export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
   ({ data }, ref) => {
@@ -65,7 +62,6 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
     const dimParts = size.dimensions.split("x").map((s) => s.trim());
     const [comp, larg, prof] = [dimParts[0] ?? "—", dimParts[1] ?? "—", dimParts[2] ?? "—"];
 
-    // Split items into two columns for page 3
     const half = Math.ceil(allItems.length / 2);
     const col1 = allItems.slice(0, half);
     const col2 = allItems.slice(half);
@@ -73,8 +69,8 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
     return (
       <div ref={ref} style={{ background: "#fff" }}>
 
-        {/* ══════════════════ PAGE 1 — CAPA ══════════════════ */}
-        <div style={PAGE}>
+        {/* ══════ PAGE 1 — CAPA ══════ */}
+        <div data-pdf-page="true" style={PAGE}>
           <TricolorBar />
           <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Capa" />
 
@@ -82,7 +78,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
             <div>
               <SectionLabel color={BLUE}>Preparado Para</SectionLabel>
               <div style={{ paddingLeft: "10px" }}>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: INK }}>{data.clientName}</div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>{data.clientName}</div>
                 <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px", lineHeight: 1.6 }}>
                   {data.clientAddress && <>{data.clientAddress}<br /></>}
                   {data.clientCity}
@@ -93,7 +89,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
             <div>
               <SectionLabel color={PINK}>Consultor Responsável</SectionLabel>
               <div style={{ paddingLeft: "10px" }}>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: INK }}>{data.sellerName}</div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>{data.sellerName}</div>
                 <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px", lineHeight: 1.6 }}>
                   Splash Piscinas iGUi<br />Revendedora Autorizada
                 </div>
@@ -107,13 +103,13 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                 <div style={{ fontSize: "9px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px" }}>
                   Modelo Selecionado
                 </div>
-                <div style={{ fontSize: "22px", fontWeight: 800, color: INK, lineHeight: 1.1 }}>Piscina {model.name}</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: INK, lineHeight: 1.1 }}>{`Piscina ${model.name}`}</div>
                 <div style={{ fontSize: "10px", color: INK_MUTED, marginTop: "4px" }}>
-                  Linha {model.line} · Estrutura em fibra de vidro PRFV reforçado
+                  {`Linha ${model.line} · Estrutura em fibra de vidro PRFV reforçado`}
                 </div>
               </div>
-              <div style={{ background: PINK, color: "#fff", padding: "4px 10px", fontSize: "8px", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase" }}>
-                Linha {model.line}
+              <div style={{ background: PINK, color: "#fff", padding: "4px 10px", fontSize: "8px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                {`Linha ${model.line}`}
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", borderTop: `1px solid ${SLATE_BORDER}`, paddingTop: "16px" }}>
@@ -125,16 +121,15 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
 
           <section style={{ marginTop: "20px", background: `${PINK}0d`, border: `1px solid ${PINK}40`, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: "9px", fontWeight: 800, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              <div style={{ fontSize: "9px", fontWeight: 700, color: PINK, letterSpacing: "0.18em", textTransform: "uppercase" }}>
                 Investimento Total do Projeto
               </div>
               <div style={{ fontSize: "9px", color: INK_MUTED, marginTop: "6px", maxWidth: "40ch" }}>
-                Inclui casco, equipamentos de série, frete e instalação completa.
-                Orçamento válido por 7 dias corridos.
+                Inclui casco, equipamentos de série, frete e instalação completa. Orçamento válido por 7 dias corridos.
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "28px", fontWeight: 900, color: PINK, lineHeight: 1, letterSpacing: "-0.02em" }}>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: PINK, lineHeight: 1, letterSpacing: "-0.02em" }}>
                 {formatCurrency(data.proposalValue)}
               </div>
               <div style={{ fontSize: "9px", fontWeight: 700, color: INK, marginTop: "6px" }}>
@@ -144,17 +139,15 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </section>
 
           <div style={{ flex: 1 }} />
-          <Footer quoteNumber={quoteNumber} pageNum={1} pageTotal={4} />
+          <Footer pageNum={1} pageTotal={4} />
         </div>
 
-        <div style={BREAK} />
-
-        {/* ══════════════════ PAGE 2 — ESPECIFICAÇÕES ══════════════════ */}
-        <div style={PAGE}>
+        {/* ══════ PAGE 2 — ESPECIFICAÇÕES ══════ */}
+        <div data-pdf-page="true" style={PAGE}>
           <TricolorBar />
           <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Especificações" />
 
-          <h2 style={{ fontSize: "20px", fontWeight: 800, color: INK, marginTop: "24px", marginBottom: "6px", letterSpacing: "-0.01em" }}>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: INK, marginTop: "24px", marginBottom: "6px" }}>
             Detalhes técnicos da piscina
           </h2>
           <p style={{ fontSize: "10px", color: INK_MUTED, marginBottom: "20px" }}>
@@ -178,7 +171,6 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
               <p style={{ fontSize: "10px", color: INK, lineHeight: 1.7, marginTop: "4px" }}>{casaMaquina.description}</p>
             </div>
           )}
-
           {heating && (
             <div style={{ marginTop: "12px", background: `${GREEN}26`, borderLeft: `3px solid ${GREEN}`, padding: "14px 18px" }}>
               <SectionLabel color="#5b9b69">{heating.name}</SectionLabel>
@@ -187,38 +179,35 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           )}
 
           <div style={{ flex: 1 }} />
-          <Footer quoteNumber={quoteNumber} pageNum={2} pageTotal={4} />
+          <Footer pageNum={2} pageTotal={4} />
         </div>
 
-        <div style={BREAK} />
-
-        {/* ══════════════════ PAGE 3 — ITENS DE SÉRIE ══════════════════ */}
-        <div style={PAGE}>
+        {/* ══════ PAGE 3 — ITENS DE SÉRIE ══════ */}
+        <div data-pdf-page="true" style={PAGE}>
           <TricolorBar />
           <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Itens de Série" />
 
-          <h2 style={{ fontSize: "20px", fontWeight: 800, color: INK, marginTop: "24px", marginBottom: "6px", letterSpacing: "-0.01em" }}>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: INK, marginTop: "24px", marginBottom: "6px" }}>
             Itens inclusos no projeto
           </h2>
           <p style={{ fontSize: "10px", color: INK_MUTED, marginBottom: "16px" }}>
             Todos os equipamentos e serviços abaixo estão inclusos no valor da proposta.
           </p>
 
-          {/* Two-column items layout */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px", flex: 1 }}>
             {[col1, col2].map((col, ci) => (
               <div key={ci}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", borderBottom: `1.5px solid ${PINK}`, paddingBottom: "6px", marginBottom: "2px" }}>
-                  <span style={{ fontSize: "8px", fontWeight: 800, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Item</span>
-                  <span style={{ fontSize: "8px", fontWeight: 800, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", width: "32px" }}>Qtd</span>
-                  <span style={{ fontSize: "8px", fontWeight: 800, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "right", width: "48px" }}>Status</span>
+                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Item</span>
+                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", width: "32px" }}>Qtd</span>
+                  <span style={{ fontSize: "8px", fontWeight: 700, color: INK_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "right", width: "48px" }}>Status</span>
                 </div>
                 {col.map((item, i) => (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", borderBottom: `1px solid ${SLATE_BORDER}`, padding: "5px 0" }}>
                     <div style={{ fontSize: "9px", fontWeight: 700, color: INK, paddingRight: "6px" }}>{item.name}</div>
                     <div style={{ fontSize: "9px", color: INK_MUTED, fontWeight: 600, width: "32px", textAlign: "center" }}>{item.qty}</div>
                     <div style={{ width: "48px", textAlign: "right" }}>
-                      <span style={{ fontSize: "7.5px", fontWeight: 800, padding: "2px 5px", background: `${GREEN}40`, color: "#3d7a4c", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "7.5px", fontWeight: 700, padding: "2px 5px", background: `${GREEN}40`, color: "#3d7a4c", letterSpacing: "0.04em", textTransform: "uppercase" }}>
                         Incluso
                       </span>
                     </div>
@@ -228,32 +217,28 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
             ))}
           </div>
 
-          <Footer quoteNumber={quoteNumber} pageNum={3} pageTotal={4} />
+          <Footer pageNum={3} pageTotal={4} />
         </div>
 
-        <div style={BREAK} />
-
-        {/* ══════════════════ PAGE 4 — TERMOS E PAGAMENTO ══════════════════ */}
-        <div style={PAGE}>
+        {/* ══════ PAGE 4 — TERMOS E PAGAMENTO ══════ */}
+        <div data-pdf-page="true" style={PAGE}>
           <TricolorBar />
           <Header dateStr={dateStr} quoteNumber={quoteNumber} pageLabel="Termos e Pagamento" />
 
-          {/* Investment recap */}
           <section style={{ marginTop: "20px", background: INK, color: "#fff", padding: "22px 28px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: "9px", fontWeight: 800, color: GREEN, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: "6px" }}>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: GREEN, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: "6px" }}>
                   Investimento Total do Projeto
                 </div>
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)" }}>Para {data.clientName}</div>
+                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)" }}>{`Para ${data.clientName}`}</div>
               </div>
-              <div style={{ fontSize: "28px", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>
                 {formatCurrency(data.proposalValue)}
               </div>
             </div>
           </section>
 
-          {/* Payment conditions */}
           <section style={{ marginTop: "22px" }}>
             <SectionLabel color={PINK}>Condições de Pagamento</SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "10px" }}>
@@ -266,16 +251,13 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
             </p>
           </section>
 
-          {/* Validity */}
           <section style={{ marginTop: "18px", background: SLATE_BG, borderLeft: `3px solid ${BLUE}`, padding: "12px 16px" }}>
             <SectionLabel color={BLUE}>Validade</SectionLabel>
             <p style={{ fontSize: "10px", color: INK, lineHeight: 1.7, marginTop: "4px" }}>
-              Este orçamento é válido até <strong>{validityDate.toLocaleDateString("pt-BR")}</strong> (7 dias corridos a partir da emissão).
-              Após essa data, valores e disponibilidade estão sujeitos a alteração.
+              {`Este orçamento é válido até `}<strong>{validityDate.toLocaleDateString("pt-BR")}</strong>{` (7 dias corridos a partir da emissão). Após essa data, valores e disponibilidade estão sujeitos a alteração.`}
             </p>
           </section>
 
-          {/* Terms */}
           <section style={{ marginTop: "16px" }}>
             <SectionLabel color={INK_MUTED}>Termos Gerais</SectionLabel>
             <ul style={{ fontSize: "9.5px", color: INK_MUTED, lineHeight: 1.7, marginTop: "6px", paddingLeft: "14px" }}>
@@ -286,7 +268,6 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
             </ul>
           </section>
 
-          {/* Signature */}
           <section style={{ marginTop: "22px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px" }}>
             <div style={{ borderTop: `1px solid ${INK}`, paddingTop: "8px", fontSize: "9px", color: INK_MUTED, textAlign: "center" }}>
               {data.clientName}<br /><span style={{ fontSize: "8px" }}>Cliente</span>
@@ -297,7 +278,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </section>
 
           <div style={{ flex: 1 }} />
-          <Footer quoteNumber={quoteNumber} pageNum={4} pageTotal={4} />
+          <Footer pageNum={4} pageTotal={4} />
         </div>
 
       </div>
@@ -324,10 +305,10 @@ function Header({ dateStr, quoteNumber, pageLabel }: {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `1.5px solid ${BLUE}40`, paddingBottom: "12px", marginTop: "8px" }}>
       <div>
-        <h1 style={{ fontSize: "22px", fontWeight: 800, color: INK, letterSpacing: "-0.02em", margin: 0, textTransform: "uppercase" }}>
-          Splash<span style={{ color: PINK }}>.</span>
+        <h1 style={{ fontSize: "22px", fontWeight: 700, color: INK, letterSpacing: "-0.02em", margin: 0, textTransform: "uppercase" }}>
+          {"Splash"}<span style={{ color: PINK }}>{"."}</span>
         </h1>
-        <p style={{ fontSize: "8px", fontWeight: 800, color: BLUE, letterSpacing: "0.2em", textTransform: "uppercase", margin: "4px 0 0 0" }}>
+        <p style={{ fontSize: "8px", fontWeight: 700, color: BLUE, letterSpacing: "0.2em", textTransform: "uppercase", margin: "4px 0 0 0" }}>
           {pageLabel === "Capa" ? "Proposta Técnica & Comercial" : pageLabel}
         </p>
       </div>
@@ -340,14 +321,14 @@ function Header({ dateStr, quoteNumber, pageLabel }: {
   );
 }
 
-function Footer({ quoteNumber: _qn, pageNum, pageTotal }: { quoteNumber: string; pageNum: number; pageTotal: number }) {
+function Footer({ pageNum, pageTotal }: { pageNum: number; pageTotal: number }) {
   return (
     <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${SLATE_BORDER}`, paddingTop: "8px", marginTop: "8px" }}>
       <p style={{ fontSize: "7.5px", color: INK_MUTED, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
         Splash Piscinas — Revendedora Autorizada iGUi
       </p>
       <p style={{ fontSize: "7.5px", fontWeight: 700, color: INK, letterSpacing: "0.18em", margin: 0 }}>
-        PÁG {String(pageNum).padStart(2, "0")} / {String(pageTotal).padStart(2, "0")}
+        {`PÁG ${String(pageNum).padStart(2, "0")} / ${String(pageTotal).padStart(2, "0")}`}
       </p>
     </footer>
   );
@@ -355,7 +336,7 @@ function Footer({ quoteNumber: _qn, pageNum, pageTotal }: { quoteNumber: string;
 
 function SectionLabel({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <h3 style={{ fontSize: "8px", fontWeight: 800, color, letterSpacing: "0.18em", textTransform: "uppercase", borderLeft: `2px solid ${color}`, paddingLeft: "7px", margin: "0 0 8px 0" }}>
+    <h3 style={{ fontSize: "8px", fontWeight: 700, color, letterSpacing: "0.18em", textTransform: "uppercase", borderLeft: `2px solid ${color}`, paddingLeft: "7px", margin: "0 0 8px 0" }}>
       {children}
     </h3>
   );
@@ -365,8 +346,8 @@ function SpecCell({ label, value, unit }: { label: string; value: string; unit: 
   return (
     <div>
       <div style={{ fontSize: "7.5px", color: INK_MUTED, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "3px", fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: "15px", fontWeight: 800, color: INK }}>
-        {value} <span style={{ fontSize: "10px", fontWeight: 600, color: INK_MUTED }}>{unit}</span>
+      <div style={{ fontSize: "15px", fontWeight: 700, color: INK }}>
+        {value}{" "}<span style={{ fontSize: "10px", fontWeight: 600, color: INK_MUTED }}>{unit}</span>
       </div>
     </div>
   );
@@ -384,7 +365,7 @@ function DetailRow({ label, value, last }: { label: string; value: string; last?
 function PaymentCard({ title, subtitle, color, highlight }: { title: string; subtitle: string; color: string; highlight?: boolean }) {
   return (
     <div style={{ border: `1px solid ${color}${highlight ? "" : "40"}`, background: highlight ? `${color}14` : "#fff", padding: "12px 14px" }}>
-      <div style={{ fontSize: "7.5px", fontWeight: 800, color, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "5px" }}>{title}</div>
+      <div style={{ fontSize: "7.5px", fontWeight: 700, color, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "5px" }}>{title}</div>
       <div style={{ fontSize: "9.5px", color: INK, fontWeight: 600 }}>{subtitle}</div>
     </div>
   );
