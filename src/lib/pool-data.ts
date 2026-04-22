@@ -127,7 +127,7 @@ export const standardItems: SerieItem[] = [
   { name: "Escavação + Instalação + Frete", qty: 1 },
 ];
 
-export const casasDeMaquina: CasaDeMaquina[] = [
+export const defaultCasasDeMaquina: CasaDeMaquina[] = [
   {
     id: "dry-pump-plus",
     name: "Dry Pump Plus",
@@ -141,6 +141,24 @@ export const casasDeMaquina: CasaDeMaquina[] = [
     items: standardItems,
   },
 ];
+
+// Mantém retrocompatibilidade
+export const casasDeMaquina = defaultCasasDeMaquina;
+
+const casasKey = "igui-casas-maquina";
+
+export function loadCasasDeMaquina(): CasaDeMaquina[] {
+  try {
+    const stored = localStorage.getItem(casasKey);
+    return stored ? JSON.parse(stored) : defaultCasasDeMaquina;
+  } catch {
+    return defaultCasasDeMaquina;
+  }
+}
+
+export function saveCasasDeMaquina(casas: CasaDeMaquina[]) {
+  localStorage.setItem(casasKey, JSON.stringify(casas));
+}
 
 export const heatingOptions: HeatingOption[] = [
   { id: "trocador", name: "Trocador de Calor", description: "Aquecimento elétrico eficiente para uso contínuo", price: 4500 },

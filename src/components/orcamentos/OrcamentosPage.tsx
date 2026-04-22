@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { FileText, History, Waves, Plus, Pencil, Trophy, X, ChevronDown, Trash2 } from "lucide-react";
+import { FileText, History, Waves, Plus, Pencil, Trophy, X, ChevronDown, Trash2, Wrench } from "lucide-react";
 import { useOrcamentos } from "@/contexts/OrcamentosContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStores } from "@/contexts/StoresContext";
@@ -11,17 +11,21 @@ import {
   type SavedQuote,
   type PoolModel,
   type PoolSize,
+  type CasaDeMaquina,
+  type SerieItem,
   type QuoteStatus,
   loadPoolModels,
   savePoolModels,
   loadPoolSizes,
   savePoolSizes,
+  loadCasasDeMaquina,
+  saveCasasDeMaquina,
   defaultPoolModels,
   defaultPoolSizes,
   formatCurrency,
 } from "@/lib/pool-data";
 
-type Tab = "novo" | "historico" | "piscinas";
+type Tab = "novo" | "historico" | "piscinas" | "maquinas";
 type StatusFilter = "todos" | QuoteStatus;
 
 const STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -220,6 +224,84 @@ export function OrcamentosPage() {
   const modelSizes = sizes.filter((s) => s.modelId === selectedModelId);
   const inputCls = "w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
+  // ── CASAS DE MÁQUINA ───────────────────────────────────────────────────────
+  const [casas, setCasas] = useState<CasaDeMaquina[]>(() => loadCasasDeMaquina());
+  const [selectedCasaId, setSelectedCasaId] = useState<string>("");
+  const [showCasaForm, setShowCasaForm] = useState(false);
+  const [editingCasa, setEditingCasa] = useState<CasaDeMaquina | null>(null);
+  const [casaForm, setCasaForm] = useState({ name: "", description: "" });
+  const [showItemForm, setShowItemForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<{ index: number; item: SerieItem } | null>(null);
+  const [itemForm, setItemForm] = useState({ name: "", qty: "1", description: "" });
+
+  function refreshCasas() {
+    setCasas(loadCasasDeMaquina());
+  }
+
+  function handleSaveCasa() {
+    if (!casaForm.name.trim()) return;
+    const current = loadCasasDeMaquina();
+    if (editingCasa) {
+      saveCasasDeMaquina(current.map((c) =>
+        c.id === editingCasa.id ? { ...c, name: casaForm.name.trim(), description: casaForm.description.trim() } : c
+      ));
+    } else {
+      const newCasa: CasaDeMaquina = {
+        id: crypto.randomUUID(),
+        name: casaForm.name.trim(),
+        description: casaForm.description.trim(),
+        items: [],
+      };
+      saveCasasDeMaquina([...current, newCasa]);
+    }
+    refreshCasas();
+    setShowCasaForm(false);
+    setEditingCasa(null);
+    setCasaForm({ name: "", description: "" });
+  }
+
+  function handleDeleteCasa(id: string) {
+    if (!window.confirm("Excluir esta casa de máquina?")) return;
+    saveCasasDeMaquina(loadCasasDeMaquina().filter((c) => c.id !== id));
+    refreshCasas();
+    if (selectedCasaId === id) setSelectedCasaId("");
+  }
+
+  function handleSaveItem() {
+    if (!itemForm.name.trim() || !selectedCasaId) return;
+    const current = loadCasasDeMaquina();
+    const newItem: SerieItem = {
+      name: itemForm.name.trim(),
+      qty: parseInt(itemForm.qty) || 1,
+      ...(itemForm.description.trim() ? { description: itemForm.description.trim() } : {}),
+    };
+    saveCasasDeMaquina(current.map((c) => {
+      if (c.id !== selectedCasaId) return c;
+      const items = [...c.items];
+      if (editingItem !== null) {
+        items[editingItem.index] = newItem;
+      } else {
+        items.push(newItem);
+      }
+      return { ...c, items };
+    }));
+    refreshCasas();
+    setShowItemForm(false);
+    setEditingItem(null);
+    setItemForm({ name: "", qty: "1", description: "" });
+  }
+
+  function handleDeleteItem(casaId: string, index: number) {
+    const current = loadCasasDeMaquina();
+    saveCasasDeMaquina(current.map((c) => {
+      if (c.id !== casaId) return c;
+      return { ...c, items: c.items.filter((_, i) => i !== index) };
+    }));
+    refreshCasas();
+  }
+
+  const selectedCasa = casas.find((c) => c.id === selectedCasaId);
+
   return (
     <div className="space-y-4">
       {/* Tab bar */}
@@ -228,12 +310,14 @@ export function OrcamentosPage() {
           { id: "historico" as Tab, icon: <History className="h-3.5 w-3.5" />, label: "Histórico" },
           { id: "novo" as Tab, icon: <Plus className="h-3.5 w-3.5" />, label: "Novo Orçamento" },
           { id: "piscinas" as Tab, icon: <Waves className="h-3.5 w-3.5" />, label: "Piscinas" },
+          { id: "maquinas" as Tab, icon: <Wrench className="h-3.5 w-3.5" />, label: "Casas de Máquina" },
         ] as const).map(({ id, icon, label }) => (
           <button
             key={id}
             onClick={() => {
               setTab(id);
               if (id !== "novo") { setEditingQuote(null); setQuoteData(null); }
+              if (id === "maquinas") { setSelectedCasaId(""); setShowCasaForm(false); setShowItemForm(false); }
             }}
             className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
               tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
@@ -554,6 +638,190 @@ export function OrcamentosPage() {
                     {modelSizes.length === 0 && (
                       <li className="px-4 py-8 text-center text-sm text-muted-foreground">
                         Nenhum tamanho cadastrado. Clique em "+ Novo" para adicionar.
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CASAS DE MÁQUINA ── */}
+      {tab === "maquinas" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Configure as casas de máquina disponíveis nos orçamentos, com seus itens e equipamentos.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Lista de casas */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
+                <h3 className="text-sm font-semibold text-foreground">Casas de Máquina</h3>
+                <button
+                  onClick={() => { setShowCasaForm(true); setEditingCasa(null); setCasaForm({ name: "", description: "" }); }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Nova
+                </button>
+              </div>
+
+              {showCasaForm && (
+                <div className="p-4 border-b border-border bg-secondary/10 space-y-3">
+                  <input
+                    className={inputCls}
+                    placeholder="Nome (ex: Dry Pump Plus)"
+                    value={casaForm.name}
+                    onChange={(e) => setCasaForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Descrição (ex: Completa com proteção contra intempéries)"
+                    value={casaForm.description}
+                    onChange={(e) => setCasaForm((f) => ({ ...f, description: e.target.value }))}
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveCasa} className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                      Salvar
+                    </button>
+                    <button onClick={() => { setShowCasaForm(false); setEditingCasa(null); }} className="px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <ul className="divide-y divide-border">
+                {casas.map((c) => (
+                  <li
+                    key={c.id}
+                    className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                      selectedCasaId === c.id ? "bg-primary/5 border-l-2 border-primary" : "hover:bg-secondary/30"
+                    }`}
+                    onClick={() => setSelectedCasaId(c.id)}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
+                      {c.description && <p className="text-xs text-muted-foreground truncate">{c.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      <span className="text-xs text-muted-foreground mr-1">{c.items.length} itens</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingCasa(c); setCasaForm({ name: c.name, description: c.description }); setShowCasaForm(true); }}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCasa(c.id); }}
+                        className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${selectedCasaId === c.id ? "-rotate-90" : ""}`} />
+                    </div>
+                  </li>
+                ))}
+                {casas.length === 0 && (
+                  <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma casa de máquina cadastrada.</li>
+                )}
+              </ul>
+            </div>
+
+            {/* Itens da casa selecionada */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Itens{selectedCasa ? ` — ${selectedCasa.name}` : ""}
+                </h3>
+                {selectedCasa && (
+                  <button
+                    onClick={() => { setShowItemForm(true); setEditingItem(null); setItemForm({ name: "", qty: "1", description: "" }); }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-3 w-3" /> Novo
+                  </button>
+                )}
+              </div>
+
+              {!selectedCasa ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  Selecione uma casa de máquina para ver os itens.
+                </div>
+              ) : (
+                <>
+                  {showItemForm && (
+                    <div className="p-4 border-b border-border bg-secondary/10 space-y-3">
+                      <input
+                        className={inputCls}
+                        placeholder="Nome do item (ex: Moto Bomba 1/2 CV)"
+                        value={itemForm.name}
+                        onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          className={inputCls}
+                          placeholder="Qtd"
+                          value={itemForm.qty}
+                          onChange={(e) => setItemForm((f) => ({ ...f, qty: e.target.value }))}
+                        />
+                        <input
+                          className={inputCls}
+                          placeholder="Descrição (opcional)"
+                          value={itemForm.description}
+                          onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={handleSaveItem} className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                          Salvar
+                        </button>
+                        <button onClick={() => { setShowItemForm(false); setEditingItem(null); }} className="px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <ul className="divide-y divide-border max-h-[400px] overflow-y-auto">
+                    {selectedCasa.items.map((item, idx) => (
+                      <li key={idx} className="flex items-center justify-between px-4 py-2.5 hover:bg-secondary/20 transition-colors">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            <span className="text-muted-foreground mr-1.5">{item.qty}×</span>
+                            {item.name}
+                          </p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                          <button
+                            onClick={() => {
+                              setEditingItem({ index: idx, item });
+                              setItemForm({ name: item.name, qty: String(item.qty), description: item.description ?? "" });
+                              setShowItemForm(true);
+                            }}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(selectedCasa.id, idx)}
+                            className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {selectedCasa.items.length === 0 && (
+                      <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                        Nenhum item. Clique em "+ Novo" para adicionar.
                       </li>
                     )}
                   </ul>

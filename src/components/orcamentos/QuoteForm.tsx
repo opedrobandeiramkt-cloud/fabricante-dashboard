@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import {
   heatingOptions,
-  casasDeMaquina,
+  loadCasasDeMaquina,
   loadPoolModels,
   loadPoolSizes,
   type QuoteFormData,
   type PoolModel,
   type PoolSize,
+  type CasaDeMaquina,
 } from "@/lib/pool-data";
 
 interface QuoteFormProps {
@@ -38,11 +39,13 @@ const labelCls = "block text-xs font-semibold text-muted-foreground mb-1.5";
 export function QuoteForm({ onGenerate, initialData, defaultSellerName = "", generating, storeKind = "splash", storeId }: QuoteFormProps) {
   const [poolModels, setPoolModels] = useState<PoolModel[]>([]);
   const [poolSizes, setPoolSizes] = useState<PoolSize[]>([]);
+  const [casasDeMaquina, setCasasDeMaquina] = useState<CasaDeMaquina[]>([]);
   const [form, setForm] = useState<QuoteFormData>(initialData ?? emptyForm(defaultSellerName));
 
   useEffect(() => {
     setPoolModels(loadPoolModels(storeId));
     setPoolSizes(loadPoolSizes(storeId));
+    setCasasDeMaquina(loadCasasDeMaquina());
   }, [storeId]);
 
   useEffect(() => {
