@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { StoreFormModal } from "./StoreFormModal";
 import { useStores } from "@/hooks/useStores";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Store as StoreType } from "@/lib/types";
 import type { StoreType as StoreKind } from "@/lib/store-types";
 
@@ -14,6 +15,8 @@ interface StoresPageProps {
 
 export function StoresPage({ readOnly = false }: StoresPageProps) {
   const { stores, addStore, updateStore, deleteStore, toggleActive } = useStores();
+  const { user } = useAuth();
+  const adminId = user?.id;
 
   const [search,       setSearch]       = useState("");
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
@@ -35,9 +38,9 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
   async function handleSave(data: Omit<StoreType, "id" | "createdAt">, storeKind: StoreKind) {
     const withType = { ...data, storeType: storeKind };
     if (modalStore === "new") {
-      await addStore(withType);
+      await addStore(withType, adminId);
     } else if (modalStore) {
-      await updateStore(modalStore.id, withType);
+      await updateStore(modalStore.id, withType, adminId);
     }
     setModalStore(null);
   }
@@ -149,7 +152,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
         <DeleteConfirmModal
           store={deleteTarget}
           onConfirm={async () => {
-            await deleteStore(deleteTarget.id);
+            await deleteStore(deleteTarget.id, adminId);
             setDeleteTarget(null);
           }}
           onClose={() => setDeleteTarget(null)}

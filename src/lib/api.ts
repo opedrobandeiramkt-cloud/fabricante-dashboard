@@ -98,23 +98,26 @@ export const api = {
     });
   },
 
-  createStore(data: { name: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string }> {
-    return apiFetch("/api/dashboard/stores", {
+  createStore(adminId: string, data: { name: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; createdAt: string; active: boolean }> {
+    return apiFetch("/api/stores", {
       method: "POST",
+      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  updateStore(id: string, data: { name?: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string }> {
-    return apiFetch(`/api/dashboard/stores/${id}`, {
+  updateStore(adminId: string, id: string, data: { name?: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; createdAt: string; active: boolean }> {
+    return apiFetch(`/api/stores/${id}`, {
       method: "PUT",
+      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  deleteStore(id: string): Promise<{ ok: boolean }> {
-    return apiFetch(`/api/dashboard/stores/${id}`, {
+  deleteStore(adminId: string, id: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/stores/${id}`, {
       method: "DELETE",
+      userId: adminId,
     });
   },
 };

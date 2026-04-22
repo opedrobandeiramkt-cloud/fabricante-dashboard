@@ -26,10 +26,10 @@ const EMPTY: FormData = {
 };
 
 interface StoreFormModalProps {
-  store:            StoreType | null;
+  store:             StoreType | null; // null = novo cadastro
   initialStoreKind?: StoreKind;
-  onSave:           (data: Omit<StoreType, "id" | "createdAt">, storeKind: StoreKind) => void;
-  onClose:          () => void;
+  onSave:            (data: Omit<StoreType, "id" | "createdAt">, storeKind: StoreKind) => void | Promise<void>;
+  onClose:           () => void;
 }
 
 export function StoreFormModal({ store, initialStoreKind = "splash", onSave, onClose }: StoreFormModalProps) {

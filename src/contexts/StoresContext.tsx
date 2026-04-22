@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 
 const USE_API      = import.meta.env.VITE_USE_API === "true";
 const BASE_URL     = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
+const TENANT       = import.meta.env.VITE_TENANT_SLUG ?? "igui";
 const STORAGE_KEY  = "igui_stores";
 const DELETED_KEY  = "igui_deleted_stores"; // IDs permanentemente excluídos
 
@@ -36,9 +37,9 @@ function saveStores(stores: Store[]) {
 
 interface StoresContextValue {
   stores:       Store[];
-  addStore:     (data: Omit<Store, "id" | "createdAt">) => Promise<Store>;
-  updateStore:  (id: string, data: Partial<Omit<Store, "id" | "createdAt">>) => Promise<void>;
-  deleteStore:  (id: string) => Promise<void>;
+  addStore:     (data: Omit<Store, "id" | "createdAt">, adminId?: string) => Promise<Store>;
+  updateStore:  (id: string, data: Partial<Omit<Store, "id" | "createdAt">>, adminId?: string) => Promise<void>;
+  deleteStore:  (id: string, adminId?: string) => Promise<void>;
   toggleActive: (id: string) => void;
 }
 
@@ -47,17 +48,19 @@ const StoresContext = createContext<StoresContextValue | null>(null);
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>(loadStores);
 
-  // Quando usa API real, sempre sincroniza com o banco para garantir IDs corretos.
-  // Preserva o status `active` e customizações locais de nome/cidade.
+  // Quando usa API real, sincroniza com o banco preservando customizações locais.
   useEffect(() => {
     if (!USE_API) return;
     fetch(`${BASE_URL}/api/dashboard/stores`, {
-      headers: { "x-tenant-slug": "igui" },
+      headers: { "x-tenant-slug": TENANT },
     })
       .then((r) => r.json())
       .then((data: { id: string; name: string; city: string; state: string; externalId?: string }[]) => {
         const localMap   = new Map(loadStores().map((s) => [s.id, s]));
         const deletedIds = loadDeletedIds();
+        const apiIds     = new Set(data.map((s) => s.id));
+
+        // Lojas vindas da API com customizações locais preservadas
         const apiStores: Store[] = data
           .filter((s) => !deletedIds.has(s.id))
           .map((s) => {
@@ -67,14 +70,23 @@ export function StoresProvider({ children }: { children: ReactNode }) {
               name:       local?.name       ?? s.name,
               city:       local?.city       ?? s.city,
               state:      local?.state      ?? s.state,
-              externalId: s.externalId,
-              active:     local?.active     ?? true,
-              createdAt:  local?.createdAt  ?? new Date().toISOString(),
-              storeType:  local?.storeType  ?? "splash",
+              externalId: local?.externalId ?? s.externalId,
+              phone:      local?.phone,      // campo apenas local (não existe no banco)
+              email:      local?.email,      // campo apenas local (não existe no banco)
+              active:     local?.active      ?? true,
+              storeType:  local?.storeType   ?? "splash",
+              createdAt:  local?.createdAt   ?? new Date().toISOString(),
             };
           });
-        setStores(apiStores);
-        saveStores(apiStores);
+
+        // Lojas criadas localmente que ainda não existem na API
+        const localOnlyStores = loadStores().filter(
+          (s) => !apiIds.has(s.id) && !deletedIds.has(s.id),
+        );
+
+        const allStores = [...apiStores, ...localOnlyStores];
+        setStores(allStores);
+        saveStores(allStores);
       })
       .catch(() => { /* mantém lojas do localStorage */ });
   }, []);
@@ -84,20 +96,23 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     saveStores(updated);
   }
 
-  async function addStore(data: Omit<Store, "id" | "createdAt">): Promise<Store> {
-    if (USE_API) {
-      const created = await api.createStore({ name: data.name, city: data.city, state: data.state, externalId: data.externalId });
-      const newStore: Store = {
-        id:         created.id,
-        name:       created.name,
-        city:       created.city ?? "",
-        state:      created.state ?? "",
-        externalId: created.externalId,
-        active:     data.active ?? true,
-        createdAt:  new Date().toISOString(),
-      };
-      persist([...stores, newStore]);
-      return newStore;
+  async function addStore(data: Omit<Store, "id" | "createdAt">, adminId?: string): Promise<Store> {
+    if (USE_API && adminId) {
+      try {
+        const created = await api.createStore(adminId, {
+          name:       data.name,
+          city:       data.city,
+          state:      data.state,
+          externalId: data.externalId,
+        });
+        const newStore: Store = {
+          ...data,
+          id:        created.id,
+          createdAt: new Date().toISOString(),
+        };
+        persist([...stores, newStore]);
+        return newStore;
+      } catch { /* fallback local */ }
     }
     const newStore: Store = {
       ...data,
@@ -108,16 +123,21 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     return newStore;
   }
 
-  async function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>): Promise<void> {
-    if (USE_API) {
-      await api.updateStore(id, { name: data.name, city: data.city, state: data.state, externalId: data.externalId });
+  async function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>, adminId?: string): Promise<void> {
+    if (USE_API && adminId) {
+      await api.updateStore(adminId, id, {
+        name:       data.name,
+        city:       data.city,
+        state:      data.state,
+        externalId: data.externalId,
+      }).catch(() => { /* persiste localmente mesmo se API falhar */ });
     }
     persist(stores.map((s) => (s.id === id ? { ...s, ...data } : s)));
   }
 
-  async function deleteStore(id: string): Promise<void> {
-    if (USE_API) {
-      await api.deleteStore(id);
+  async function deleteStore(id: string, adminId?: string): Promise<void> {
+    if (USE_API && adminId) {
+      await api.deleteStore(adminId, id).catch(() => { /* continua com exclusão local */ });
     }
     saveDeletedId(id);
     persist(stores.filter((s) => s.id !== id));

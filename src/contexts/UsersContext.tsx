@@ -89,11 +89,14 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     });
     setUsers(newUsers);
     localStorage.setItem(USERS_KEY, JSON.stringify(newUsers));
-    if (data.password) {
-      const newPasswords = { ...passwords, [userId]: data.password };
-      setPasswords(newPasswords);
-      localStorage.setItem(PASSWD_KEY, JSON.stringify(newPasswords));
-    }
+
+    // Sempre persiste o arquivo de senhas para manter sincronizado com USERS_KEY.
+    // Atualiza a senha apenas se uma nova foi fornecida.
+    const newPasswords = data.password
+      ? { ...passwords, [userId]: data.password }
+      : { ...passwords };
+    if (data.password) setPasswords(newPasswords);
+    localStorage.setItem(PASSWD_KEY, JSON.stringify(newPasswords));
   }
 
   async function deleteUser(userId: string): Promise<void> {
