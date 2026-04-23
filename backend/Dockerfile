@@ -27,8 +27,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY prisma ./prisma
+COPY start.sh ./start.sh
+RUN chmod +x start.sh
 
 EXPOSE 3333
 
-# Inicia o servidor diretamente — db push deve ser feito via Railway deploy command ou manualmente
-CMD ["node", "dist/server.js"]
+CMD ["sh", "start.sh"]
