@@ -14,7 +14,7 @@ function loadLocalUsers(): AppUser[] {
 }
 function loadLocalPasswords(): Record<string, string> {
   try { const r = localStorage.getItem(PASSWD_KEY); if (r) return JSON.parse(r) as Record<string, string>; } catch { /* */ }
-  return { "user-admin": "admin2024", "user-fab-sp": "igui2024", "user-fab-pr": "igui2024", "user-fab-mg": "igui2024", "user-fab-rj": "igui2024" };
+  return { "user-admin": "admin2024", "user-fab-sp": "igui2024", "user-fab-pr": "igui2024", "user-fab-mg": "igui2024", "user-fab-rj": "igui2024", "user-v1": "igui2024" };
 }
 
 interface UsersContextValue {

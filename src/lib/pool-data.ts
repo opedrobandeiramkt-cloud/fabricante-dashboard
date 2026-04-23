@@ -70,7 +70,13 @@ const sizesKey  = (storeId?: string) => storeId ? `igui-pool-sizes-${storeId}`  
 export function loadPoolModels(storeId?: string): PoolModel[] {
   try {
     const stored = localStorage.getItem(modelsKey(storeId));
-    return stored ? JSON.parse(stored) : defaultPoolModels;
+    if (stored) return JSON.parse(stored);
+    // Migração: antes do catálogo por-loja, os modelos eram salvos na chave global.
+    if (storeId) {
+      const global = localStorage.getItem(modelsKey());
+      if (global) return JSON.parse(global);
+    }
+    return defaultPoolModels;
   } catch {
     return defaultPoolModels;
   }
@@ -83,7 +89,13 @@ export function savePoolModels(models: PoolModel[], storeId?: string) {
 export function loadPoolSizes(storeId?: string): PoolSize[] {
   try {
     const stored = localStorage.getItem(sizesKey(storeId));
-    return stored ? JSON.parse(stored) : defaultPoolSizes;
+    if (stored) return JSON.parse(stored);
+    // Migração: antes do catálogo por-loja, os tamanhos eram salvos na chave global.
+    if (storeId) {
+      const global = localStorage.getItem(sizesKey());
+      if (global) return JSON.parse(global);
+    }
+    return defaultPoolSizes;
   } catch {
     return defaultPoolSizes;
   }

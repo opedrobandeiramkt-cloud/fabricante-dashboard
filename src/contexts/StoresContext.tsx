@@ -26,7 +26,28 @@ function saveDeletedId(id: string) {
 function loadStores(): Store[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Store[];
+    const stores: Store[] = raw ? (JSON.parse(raw) as Store[]) : DEFAULT_STORES;
+
+    // Migração: storeType era salvo em chave separada "igui-store-types" antes do commit 0836713.
+    // Se alguma loja não tiver storeType, tenta herdar do formato antigo.
+    const oldRaw = localStorage.getItem("igui-store-types");
+    if (oldRaw) {
+      const oldTypes = JSON.parse(oldRaw) as Record<string, "splash" | "igui">;
+      let migrated = false;
+      const upgraded = stores.map((s) => {
+        if (!s.storeType && oldTypes[s.id]) {
+          migrated = true;
+          return { ...s, storeType: oldTypes[s.id] };
+        }
+        return s;
+      });
+      if (migrated) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(upgraded));
+        return upgraded;
+      }
+    }
+
+    return stores;
   } catch { /* ignore */ }
   return DEFAULT_STORES;
 }
