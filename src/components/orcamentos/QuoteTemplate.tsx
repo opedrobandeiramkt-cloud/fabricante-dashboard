@@ -12,6 +12,7 @@ import {
 interface QuoteTemplateProps {
   data: QuoteFormData;
   storeId?: string;
+  storeName?: string;
 }
 
 const PINK        = "#E60A80";
@@ -38,7 +39,7 @@ const PAGE: React.CSSProperties = {
 };
 
 export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
-  ({ data, storeId }, ref) => {
+  ({ data, storeId, storeName }, ref) => {
     const allModels   = loadPoolModels(storeId);
     const allSizes    = loadPoolSizes(storeId);
     const model       = allModels.find((m) => m.id === data.poolModelId);
@@ -141,7 +142,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </div>
 
           <div style={{ flex: 1 }} />
-          <PageFooter pageNum={1} pageTotal={4} />
+          <PageFooter pageNum={1} pageTotal={4} storeName={storeName} />
         </div>
 
         {/* ══ PAGE 2 — ESPECIFICAÇÕES ══ */}
@@ -187,7 +188,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </div>
 
           <div style={{ flex: 1 }} />
-          <PageFooter pageNum={2} pageTotal={4} />
+          <PageFooter pageNum={2} pageTotal={4} storeName={storeName} />
         </div>
 
         {/* ══ PAGE 3 — ITENS DE SÉRIE ══ */}
@@ -236,7 +237,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </table>
 
           <div style={{ flex: 1 }} />
-          <PageFooter pageNum={3} pageTotal={4} />
+          <PageFooter pageNum={3} pageTotal={4} storeName={storeName} />
         </div>
 
         {/* ══ PAGE 4 — TERMOS E PAGAMENTO ══ */}
@@ -329,7 +330,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
           </div>
 
           <div style={{ flex: 1 }} />
-          <PageFooter pageNum={4} pageTotal={4} withContact />
+          <PageFooter pageNum={4} pageTotal={4} withContact storeName={storeName} />
         </div>
 
       </div>
@@ -350,13 +351,14 @@ function PageHeader({ quoteNum, dateStr }: { quoteNum: string; dateStr: string }
   );
 }
 
-function PageFooter({ pageNum, pageTotal, withContact }: { pageNum: number; pageTotal: number; withContact?: boolean }) {
+function PageFooter({ pageNum, pageTotal, withContact, storeName }: { pageNum: number; pageTotal: number; withContact?: boolean; storeName?: string }) {
+  const name = storeName?.toUpperCase() ?? "SPLASH PISCINAS";
   return (
     <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${SLATE_BD}`, paddingTop: 8, marginTop: 8 }}>
       <p style={{ fontSize: 8, color: "#64748b", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>
         {withContact
-          ? "Splash Piscinas · Revendedora Autorizada iGUi · splashpiscinas.com · 0800 877 5274"
-          : "SPLASH PISCINAS · Revendedora Autorizada iGUi"}
+          ? `${name} · Revendedora Autorizada iGUi · 0800 877 5274`
+          : `${name} · Revendedora Autorizada iGUi`}
       </p>
       <p style={{ fontSize: 8, color: "#1a1a2e", fontWeight: 700, margin: 0 }}>
         {`Pág. ${pageNum} / ${pageTotal}`}

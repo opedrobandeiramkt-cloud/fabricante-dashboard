@@ -53,15 +53,20 @@ export function OrcamentosPage() {
   const [confirmWonId, setConfirmWonId] = useState<string | null>(null);
   const quoteRef = useRef<HTMLDivElement>(null);
 
-  // Loja do usuário logado (para salvar orçamentos)
-  const storeId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
-  const storeKind = stores.find((s) => s.id === storeId)?.storeType ?? "splash";
+  // Loja base do usuário logado
+  const defaultStoreId = allowedStoreIds[0] ?? stores[0]?.id ?? "default";
   const vendedorId = user?.id ?? "";
   const vendedorName = user?.name ?? "";
 
+  // Loja selecionada para o novo orçamento — vendedor fica fixo, admin/fabricante pode trocar
+  const [quoteStoreId, setQuoteStoreId] = useState<string>(defaultStoreId);
+  const activeQuoteStoreId = isVendedor ? defaultStoreId : quoteStoreId;
+  const activeStoreKind = stores.find((s) => s.id === activeQuoteStoreId)?.storeType ?? "splash";
+  const activeStoreName = stores.find((s) => s.id === activeQuoteStoreId)?.name;
+
   // Loja selecionada no catálogo de Piscinas
   // Vendedor: fixo na sua loja. Admin/fabricante: pode escolher qualquer loja.
-  const [catalogStoreId, setCatalogStoreId] = useState<string>(storeId);
+  const [catalogStoreId, setCatalogStoreId] = useState<string>(defaultStoreId);
 
   // ── NOVO ORÇAMENTO ─────────────────────────────────────────────────────────
   async function handleGenerate(data: QuoteFormData) {
@@ -82,7 +87,7 @@ export function OrcamentosPage() {
         formData: data,
         vendedorId,
         vendedorName,
-        storeId,
+        storeId: activeQuoteStoreId,
       });
     }
 
@@ -144,8 +149,8 @@ export function OrcamentosPage() {
   const pendingCount = quotes.filter((q) => q.status === "pendente").length;
 
   // ── PISCINAS ───────────────────────────────────────────────────────────────
-  const [models, setModels] = useState<PoolModel[]>(() => loadPoolModels(storeId));
-  const [sizes, setSizes] = useState<PoolSize[]>(() => loadPoolSizes(storeId));
+  const [models, setModels] = useState<PoolModel[]>(() => loadPoolModels(defaultStoreId));
+  const [sizes, setSizes] = useState<PoolSize[]>(() => loadPoolSizes(defaultStoreId));
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [showModelForm, setShowModelForm] = useState(false);
   const [showSizeForm, setShowSizeForm] = useState(false);
@@ -341,13 +346,36 @@ export function OrcamentosPage() {
               </button>
             </div>
           )}
+          {!isVendedor && stores.length > 1 && (
+            <div className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3">
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Loja:</span>
+              <select
+                value={quoteStoreId}
+                onChange={(e) => setQuoteStoreId(e.target.value)}
+                className="flex-1 text-sm px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} — {s.city} ({s.storeType === "igui" ? "iGUi Cerâmica" : "Splash"})
+                  </option>
+                ))}
+              </select>
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${
+                activeStoreKind === "igui"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                  : "bg-pink-100 text-pink-700 dark:bg-pink-900/20 dark:text-pink-400"
+              }`}>
+                {activeStoreKind === "igui" ? "iGUi Cerâmica" : "Splash"}
+              </span>
+            </div>
+          )}
           <QuoteForm
             onGenerate={handleGenerate}
             initialData={editingQuote?.formData}
             defaultSellerName={vendedorName}
             generating={generating}
-            storeKind={storeKind}
-            storeId={storeId}
+            storeKind={activeStoreKind}
+            storeId={activeQuoteStoreId}
           />
         </div>
       )}
@@ -356,17 +384,32 @@ export function OrcamentosPage() {
       {tab === "historico" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-xs font-medium text-muted-foreground">Total</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">{quotes.length}</p>
+            <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold text-foreground">{quotes.length}</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
-              <p className="mt-1 text-2xl font-bold text-yellow-600">{pendingCount}</p>
+            <div className="rounded-xl border border-yellow-200 dark:border-yellow-800/40 bg-card p-4 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
+                <History className="h-4 w-4 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
+                <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-xs font-medium text-muted-foreground">Ganhos</p>
-              <p className="mt-1 text-2xl font-bold text-green-600">{wonCount}</p>
+            <div className="rounded-xl border border-green-200 dark:border-green-800/40 bg-card p-4 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                <Trophy className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Ganhos</p>
+                <p className="text-2xl font-bold text-green-600">{wonCount}</p>
+              </div>
             </div>
           </div>
 
@@ -871,9 +914,9 @@ export function OrcamentosPage() {
       {/* Offscreen PDF template */}
       {quoteData && (
         <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-          {storeKind === "igui"
-            ? <IguiQuoteTemplate ref={quoteRef} data={quoteData} storeId={storeId} />
-            : <QuoteTemplate ref={quoteRef} data={quoteData} storeId={storeId} />
+          {activeStoreKind === "igui"
+            ? <IguiQuoteTemplate ref={quoteRef} data={quoteData} storeId={activeQuoteStoreId} storeName={activeStoreName} />
+            : <QuoteTemplate ref={quoteRef} data={quoteData} storeId={activeQuoteStoreId} storeName={activeStoreName} />
           }
         </div>
       )}

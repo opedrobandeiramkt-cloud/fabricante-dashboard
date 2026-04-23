@@ -97,7 +97,7 @@ function PageHeader({ clientCity }: { clientCity: string }) {
   );
 }
 
-function PageFooter({ sellerName }: { sellerName: string }) {
+function PageFooter({ sellerName, storeName }: { sellerName: string; storeName?: string }) {
   return (
     <div style={{
       marginTop: "auto", paddingTop: 12,
@@ -106,6 +106,7 @@ function PageFooter({ sellerName }: { sellerName: string }) {
     }}>
       <span style={{ fontSize: 10, color: "#666" }}>
         Consultor: <strong style={{ color: NAVY }}>{sellerName}</strong>
+        {storeName && <> · <strong style={{ color: NAVY }}>{storeName}</strong></>}
       </span>
       <div style={{ background: BLUE, color: "#fff", fontWeight: 700, fontSize: 10, padding: "2px 10px", borderRadius: 3 }}>
         iGUi Piscinas
@@ -136,7 +137,7 @@ function ItemsTableRows({ rows }: { rows: typeof items }) {
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
 
-function Page1({ data, model, size }: { data: QuoteFormData; model: PoolModel; size: PoolSize }) {
+function Page1({ data, model, size, storeName }: { data: QuoteFormData; model: PoolModel; size: PoolSize; storeName?: string }) {
   const p = PAGE.padding;
   return (
     <div
@@ -205,12 +206,12 @@ function Page1({ data, model, size }: { data: QuoteFormData; model: PoolModel; s
         </table>
       </div>
 
-      <PageFooter sellerName={data.sellerName} />
+      <PageFooter sellerName={data.sellerName} storeName={storeName} />
     </div>
   );
 }
 
-function Page2({ data }: { data: QuoteFormData }) {
+function Page2({ data, storeName }: { data: QuoteFormData; storeName?: string }) {
   const p = PAGE.padding;
   return (
     <div
@@ -313,12 +314,12 @@ function Page2({ data }: { data: QuoteFormData }) {
         </div>
       </div>
 
-      <PageFooter sellerName={data.sellerName} />
+      <PageFooter sellerName={data.sellerName} storeName={storeName} />
     </div>
   );
 }
 
-function Page3({ data }: { data: QuoteFormData }) {
+function Page3({ data, storeName }: { data: QuoteFormData; storeName?: string }) {
   const p = PAGE.padding;
   return (
     <div
@@ -383,6 +384,7 @@ function Page3({ data }: { data: QuoteFormData }) {
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: NAVY }}>{data.sellerName}</div>
           <div style={{ fontSize: 11, color: "#888" }}>Consultor iGUi Piscinas</div>
+          {storeName && <div style={{ fontSize: 11, color: BLUE, fontWeight: 600 }}>{storeName}</div>}
           {data.clientCity && (
             <div style={{ fontSize: 11, color: "#888" }}>{data.clientCity}</div>
           )}
@@ -432,10 +434,11 @@ function PayRow({ label, value }: { label: string; value: string }) {
 interface IguiQuoteTemplateProps {
   data: QuoteFormData;
   storeId?: string;
+  storeName?: string;
 }
 
 export const IguiQuoteTemplate = forwardRef<HTMLDivElement, IguiQuoteTemplateProps>(
-  ({ data, storeId }, ref) => {
+  ({ data, storeId, storeName }, ref) => {
     const allModels = loadPoolModels(storeId);
     const allSizes  = loadPoolSizes(storeId);
     const model = allModels.find((m) => m.id === data.poolModelId);
@@ -443,10 +446,12 @@ export const IguiQuoteTemplate = forwardRef<HTMLDivElement, IguiQuoteTemplatePro
     if (!model || !size) return null;
     return (
       <div ref={ref} style={{ background: "#fff" }}>
-        <Page1 data={data} model={model} size={size} />
-        <Page2 data={data} />
-        <Page3 data={data} />
+        <Page1 data={data} model={model} size={size} storeName={storeName} />
+        <Page2 data={data} storeName={storeName} />
+        <Page3 data={data} storeName={storeName} />
       </div>
     );
   }
 );
+
+IguiQuoteTemplate.displayName = "IguiQuoteTemplate";
