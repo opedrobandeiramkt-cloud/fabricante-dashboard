@@ -1,18 +1,23 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+let _client: PrismaClient | undefined;
 
-function createPrisma() {
-  if (!process.env.DATABASE_URL) {
-    console.warn("[prisma] DATABASE_URL não definida — consultas ao banco vão falhar.");
+function getClient(): PrismaClient {
+  if (!_client) {
+    if (!process.env.DATABASE_URL) {
+      console.error("[prisma] ERRO: DATABASE_URL não está definida. Configure a variável no Railway.");
+    }
+    _client = new PrismaClient({
+      log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    });
   }
-  return new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  });
+  return _client;
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrisma();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Proxy lazy: só instancia o PrismaClient quando a primeira query for feita.
+// Isso evita crash no startup se DATABASE_URL não estiver configurada.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return (getClient() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
