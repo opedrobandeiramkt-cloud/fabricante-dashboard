@@ -25,12 +25,12 @@
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
     "pino-pretty": "^11.0.0",
+    "prisma": "^5.22.0",
     "resend": "^6.10.0",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   }
