@@ -31,4 +31,4 @@ COPY prisma ./prisma
 
 EXPOSE 3333
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate 2>&1 || echo 'AVISO: db push falhou — verifique DATABASE_URL'; node dist/server.js"]
