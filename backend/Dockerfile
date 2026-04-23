@@ -12,7 +12,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-# ── Stage 2: produção (apenas o necessário) ──────────────────────────────────
+# ── Stage 2: produção ────────────────────────────────────────────────────────
 FROM node:20-alpine AS production
 WORKDIR /app
 
@@ -21,14 +21,14 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copia artefatos do build
+# Artefatos do build
 COPY --from=builder /app/dist ./dist
-# Copia o Prisma client gerado
+# Prisma client gerado (binário nativo para linux/alpine)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-# Schema necessário para db push
 COPY prisma ./prisma
 
 EXPOSE 3333
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate 2>&1 || echo 'AVISO: db push falhou — verifique DATABASE_URL'; node dist/server.js"]
+# Inicia o servidor diretamente — db push deve ser feito via Railway deploy command ou manualmente
+CMD ["node", "dist/server.js"]
