@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { execFile } from "child_process";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -79,6 +80,18 @@ const host = process.env.HOST ?? "0.0.0.0";
 try {
   await app.listen({ port, host });
   console.log(`\n🚀 Backend rodando em http://localhost:${port}\n`);
+
+  // Aplica o schema do banco em background, com timeout de 45s para não travar o container.
+  const dbPush = execFile(
+    "node_modules/.bin/prisma",
+    ["db", "push", "--skip-generate", "--accept-data-loss"],
+    { timeout: 45_000, cwd: process.cwd() },
+    (err, stdout) => {
+      if (err) console.error("[prisma] db push erro:", err.message);
+      else { console.log("[prisma] db push ok"); if (stdout) console.log(stdout); }
+    }
+  );
+  dbPush.on("error", (e) => console.error("[prisma] falha ao iniciar:", e.message));
 } catch (err) {
   app.log.error(err);
   process.exit(1);
