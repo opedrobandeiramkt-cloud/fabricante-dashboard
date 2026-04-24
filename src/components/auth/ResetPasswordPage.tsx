@@ -2,9 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
-const API       = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
-const USERS_KEY = "igui_users";
-const PASSWD_KEY = "igui_passwords";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 
 interface Props {
   token:   string;
@@ -40,31 +38,12 @@ export function ResetPasswordPage({ token, onDone }: Props) {
         return;
       }
 
-      // Atualiza a senha no localStorage
-      if (data.email) {
-        updatePasswordInStorage(data.email, password);
-      }
-
       setSuccess(true);
     } catch {
       setError("Erro ao conectar. Tente novamente.");
     } finally {
       setLoading(false);
     }
-  }
-
-  function updatePasswordInStorage(email: string, newPassword: string) {
-    try {
-      const rawUsers = localStorage.getItem(USERS_KEY);
-      const users    = rawUsers ? JSON.parse(rawUsers) as { id: string; email: string }[] : [];
-      const user     = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) return;
-
-      const rawPwd   = localStorage.getItem(PASSWD_KEY);
-      const passwords = rawPwd ? JSON.parse(rawPwd) as Record<string, string> : {};
-      passwords[user.id] = newPassword;
-      localStorage.setItem(PASSWD_KEY, JSON.stringify(passwords));
-    } catch { /* ignora */ }
   }
 
   return (

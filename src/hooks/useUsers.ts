@@ -3,9 +3,8 @@ import { MOCK_USERS } from "@/lib/mock-users";
 import { api } from "@/lib/api";
 import type { AppUser, UserRole } from "@/lib/auth-types";
 
-const USE_API    = import.meta.env.VITE_USE_API === "true";
-const USERS_KEY  = "igui_users";
-const PASSWD_KEY = "igui_passwords";
+const USE_API   = import.meta.env.VITE_USE_API === "true";
+const USERS_KEY = "igui_users";
 
 function loadUsers(): AppUser[] {
   try {
@@ -15,27 +14,8 @@ function loadUsers(): AppUser[] {
   return MOCK_USERS;
 }
 
-function loadPasswords(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(PASSWD_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, string>;
-  } catch { /* ignore */ }
-  return {
-    "user-admin":   "admin2024",
-    "user-fab-sp":  "igui2024",
-    "user-fab-pr":  "igui2024",
-    "user-fab-mg":  "igui2024",
-    "user-fab-rj":  "igui2024",
-    "user-v1":      "igui2024",
-  };
-}
-
 function saveUsers(users: AppUser[]) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function savePasswords(passwords: Record<string, string>) {
-  localStorage.setItem(PASSWD_KEY, JSON.stringify(passwords));
 }
 
 function generateId() {
@@ -53,11 +33,9 @@ export type UserFormData = {
 };
 
 export function useUsers(_adminId?: string) {
-  const [users,     setUsers]     = useState<AppUser[]>(() => USE_API ? [] : loadUsers());
-  const [passwords, setPasswords] = useState<Record<string, string>>(() => USE_API ? {} : loadPasswords());
-  const [loading,   setLoading]   = useState(false);
+  const [users,   setUsers]   = useState<AppUser[]>(() => USE_API ? [] : loadUsers());
+  const [loading, setLoading] = useState(false);
 
-  // Quando usa API, carrega usuários do backend
   useEffect(() => {
     if (!USE_API) return;
     setLoading(true);
@@ -88,12 +66,9 @@ export function useUsers(_adminId?: string) {
       salesGoal: data.salesGoal ?? null,
       crmUserId: data.crmUserId ?? null,
     };
-    const newUsers     = [...users, newUser];
-    const newPasswords = { ...passwords, [newUser.id]: data.password };
+    const newUsers = [...users, newUser];
     setUsers(newUsers);
-    setPasswords(newPasswords);
     saveUsers(newUsers);
-    savePasswords(newPasswords);
     return newUser;
   }
 
@@ -122,12 +97,6 @@ export function useUsers(_adminId?: string) {
     );
     setUsers(newUsers);
     saveUsers(newUsers);
-
-    if (data.password) {
-      const newPasswords = { ...passwords, [id]: data.password };
-      setPasswords(newPasswords);
-      savePasswords(newPasswords);
-    }
   }
 
   async function deleteUser(id: string): Promise<void> {
@@ -137,21 +106,10 @@ export function useUsers(_adminId?: string) {
       return;
     }
 
-    const newUsers     = users.filter((u) => u.id !== id);
-    const newPasswords = { ...passwords };
-    delete newPasswords[id];
+    const newUsers = users.filter((u) => u.id !== id);
     setUsers(newUsers);
-    setPasswords(newPasswords);
     saveUsers(newUsers);
-    savePasswords(newPasswords);
   }
 
-  function authenticateUser(email: string, password: string): AppUser | null {
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) return null;
-    if (passwords[user.id] !== password) return null;
-    return user;
-  }
-
-  return { users, loading, addUser, updateUser, deleteUser, authenticateUser };
+  return { users, loading, addUser, updateUser, deleteUser };
 }
