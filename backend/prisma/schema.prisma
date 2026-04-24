@@ -115,6 +115,13 @@ model LeadEvent {
   @@map("lead_events")
 }
 
+// ─── Enum de roles ───────────────────────────────────────────────────────────
+enum UserRole {
+  admin
+  fabricante
+  vendedor
+}
+
 // ─── Usuários do sistema ──────────────────────────────────────────────────────
 model User {
   id             String   @id @default(uuid())
@@ -122,7 +129,7 @@ model User {
   email          String
   passwordHash   String   @map("password_hash")
   name           String
-  role           String   @default("fabricante") // "admin" | "fabricante" | "vendedor"
+  role           UserRole @default(fabricante)
   storeIds       Json     @default("[]") @map("store_ids")
   avatarInitials String   @map("avatar_initials")
   salesGoal      Int?     @map("sales_goal")
