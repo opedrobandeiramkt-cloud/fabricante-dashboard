@@ -53,7 +53,7 @@ export const api = {
     return apiFetch(`/api/dashboard/ranking?${buildParams(storeIds, period)}`);
   },
 
-  stores(): Promise<{ id: string; name: string; city: string; state: string; storeType?: string }[]> {
+  stores(): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; storeType?: string }[]> {
     return apiFetch("/api/dashboard/stores");
   },
 

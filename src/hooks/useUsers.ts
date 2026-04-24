@@ -52,25 +52,24 @@ export type UserFormData = {
   crmUserId?: string;
 };
 
-export function useUsers(adminId?: string) {
+export function useUsers(_adminId?: string) {
   const [users,     setUsers]     = useState<AppUser[]>(() => USE_API ? [] : loadUsers());
   const [passwords, setPasswords] = useState<Record<string, string>>(() => USE_API ? {} : loadPasswords());
   const [loading,   setLoading]   = useState(false);
 
   // Quando usa API, carrega usuários do backend
   useEffect(() => {
-    if (!USE_API || !adminId) return;
+    if (!USE_API) return;
     setLoading(true);
-    api.listUsers(adminId)
+    api.listUsers()
       .then(setUsers)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [adminId]);
+  }, []);
 
   async function addUser(data: UserFormData): Promise<AppUser> {
     if (USE_API) {
-      if (!adminId) throw new Error("Admin não autenticado.");
-      const { user } = await api.createUser(adminId, data);
+      const { user } = await api.createUser(data);
       setUsers((prev) => [...prev, user]);
       return user;
     }
@@ -100,8 +99,7 @@ export function useUsers(adminId?: string) {
 
   async function updateUser(id: string, data: UserFormData): Promise<void> {
     if (USE_API) {
-      if (!adminId) throw new Error("Admin não autenticado.");
-      const { user } = await api.updateUser(adminId, id, data);
+      const { user } = await api.updateUser(id, data);
       setUsers((prev) => prev.map((u) => (u.id === id ? user : u)));
       return;
     }
@@ -134,8 +132,7 @@ export function useUsers(adminId?: string) {
 
   async function deleteUser(id: string): Promise<void> {
     if (USE_API) {
-      if (!adminId) throw new Error("Admin não autenticado.");
-      await api.deleteUser(adminId, id);
+      await api.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
       return;
     }
