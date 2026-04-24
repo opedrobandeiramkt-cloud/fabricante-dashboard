@@ -24,12 +24,17 @@ try {
     "http://localhost:5174",
     ...(process.env.FRONTEND_URL ?? "").split(",").map((u) => u.trim().replace(/\/$/, "")).filter(Boolean),
   ]);
+  console.log(`[cors] FRONTEND_URL="${process.env.FRONTEND_URL ?? ""}"`);
+  console.log(`[cors] origens permitidas: ${[...allowedOrigins].join(" | ")}`);
 
   await app.register(cors, {
     origin: (origin, cb) => {
       const o = origin?.replace(/\/$/, "");
-      cb(null, !o || allowedOrigins.has(o));
+      const allowed = !o || allowedOrigins.has(o);
+      if (!allowed) console.warn(`[cors] bloqueado: ${o}`);
+      cb(null, allowed);
     },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug", "x-user-id"],
   });
