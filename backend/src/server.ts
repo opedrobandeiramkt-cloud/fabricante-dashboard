@@ -11,7 +11,7 @@ import { storeRoutes } from "./routes/stores.js";
 import { quoteRoutes } from "./routes/quotes.js";
 
 const port = Number(process.env.PORT ?? 3333);
-const host = "0.0.0.0";
+const host = process.env.HOST ?? "::";
 
 const app = Fastify({ logger: false });
 
