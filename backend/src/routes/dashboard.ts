@@ -369,7 +369,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
-      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const { role, storeIds: allowedIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      }
 
       const { start, end } = getPeriodRange(period);
 
