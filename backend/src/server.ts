@@ -16,7 +16,15 @@ const host = process.env.HOST ?? "0.0.0.0";
 const app = Fastify({ logger: false });
 
 try {
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        "default-src":     ["'none'"],
+        "frame-ancestors": ["'none'"],
+      },
+    },
+  });
   await app.register(rateLimit, { global: true, max: 100, timeWindow: "1 minute" });
 
   const allowedOrigins = new Set([
