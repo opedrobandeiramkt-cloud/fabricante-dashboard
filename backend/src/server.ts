@@ -44,7 +44,7 @@ try {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug", "x-user-id"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug"],
   });
 
   app.setErrorHandler((error, _request, reply) => {
