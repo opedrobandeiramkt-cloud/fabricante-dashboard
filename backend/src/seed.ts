@@ -42,25 +42,31 @@ async function main() {
   }
   console.log(`✅ ${STAGES.length} etapas do funil processadas`);
 
-  // Cria usuário admin padrão (só se não existir)
-  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@igui.com.br";
+  // Garante que existe pelo menos um admin com senha conhecida
+  const adminEmail    = process.env.ADMIN_EMAIL    ?? "admin@igui.com.br";
   const adminPassword = process.env.ADMIN_PASSWORD ?? "admin2024";
-  const existingAdmin = await prisma.user.findFirst({ where: { tenantId: tenant.id, email: adminEmail } });
+  const passwordHash  = await hashPassword(adminPassword);
+
+  const existingAdmin = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: "admin" } });
   if (!existingAdmin) {
     await prisma.user.create({
       data: {
-        tenantId:       tenant.id,
+        tenantId: tenant.id,
         email:          adminEmail,
-        passwordHash:   await hashPassword(adminPassword),
+        passwordHash,
         name:           "Admin",
         role:           "admin",
         storeIds:       [],
         avatarInitials: "AD",
       },
     });
-    console.log(`✅ Admin criado: ${adminEmail}`);
+    console.log(`✅ Admin criado: ${adminEmail} / ${adminPassword}`);
   } else {
-    console.log(`✅ Admin já existe: ${adminEmail}`);
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data:  { passwordHash },
+    });
+    console.log(`✅ Senha do admin redefinida: ${existingAdmin.email} / ${adminPassword}`);
   }
 
   console.log("\n🎉 Seed concluído!\n");
