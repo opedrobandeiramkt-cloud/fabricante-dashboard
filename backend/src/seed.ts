@@ -58,7 +58,7 @@ async function main() {
         avatarInitials: "AD",
       },
     });
-    console.log(`✅ Admin criado: ${adminEmail} / ${adminPassword}`);
+    console.log(`✅ Admin criado: ${adminEmail}`);
   } else {
     console.log(`✅ Admin já existe: ${adminEmail}`);
   }

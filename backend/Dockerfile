@@ -28,6 +28,10 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY prisma ./prisma
 
+# Transfere ownership para o usuário não-root embutido na imagem
+RUN chown -R node:node /app
+
 EXPOSE 3333
 
+USER node
 CMD ["node", "dist/server.js"]

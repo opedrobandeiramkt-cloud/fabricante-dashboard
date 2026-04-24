@@ -46,14 +46,21 @@ type IngestBody = {
 export async function ingestRoutes(app: FastifyInstance) {
   app.post<{ Body: IngestBody }>(
     "/api/ingest/event",
-    { schema: { body: ingestBodySchema } },
+    {
+      schema: { body: ingestBodySchema },
+      config: { rateLimit: { max: 200, timeWindow: "1 minute" } },
+    },
     async (request, reply) => {
       const body = request.body;
 
-      // 1. Autenticação simples via Bearer token
+      // 1. Autenticação via Bearer token (WEBHOOK_SECRET obrigatório)
       const authHeader = request.headers.authorization ?? "";
       const expectedToken = process.env.WEBHOOK_SECRET;
-      if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+      if (!expectedToken) {
+        request.log.error("WEBHOOK_SECRET não configurado — endpoint bloqueado por segurança");
+        return reply.code(503).send({ error: "Endpoint temporariamente indisponível." });
+      }
+      if (authHeader !== `Bearer ${expectedToken}`) {
         return reply.code(401).send({ error: "Unauthorized" });
       }
 

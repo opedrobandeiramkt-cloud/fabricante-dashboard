@@ -43,7 +43,9 @@ async function resolveFabricanteOrAdmin(tenantId: string, userId: string) {
 export async function authRoutes(app: FastifyInstance) {
 
   // POST /api/auth/login ──────────────────────────────────────────────────────
-  app.post("/api/auth/login", async (req, reply) => {
+  app.post("/api/auth/login", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+  }, async (req, reply) => {
     const { email, password } = req.body as { email?: string; password?: string };
     const tenantSlug = req.headers["x-tenant-slug"] as string;
 
@@ -214,7 +216,9 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // POST /api/auth/forgot-password
-  app.post("/api/auth/forgot-password", async (req, reply) => {
+  app.post("/api/auth/forgot-password", {
+    config: { rateLimit: { max: 3, timeWindow: "5 minutes" } },
+  }, async (req, reply) => {
     const { email } = req.body as { email?: string };
 
     // Sempre retorna 200 para não revelar se o email existe

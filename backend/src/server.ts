@@ -2,6 +2,7 @@ import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import { ingestRoutes } from "./routes/ingest.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { authRoutes } from "./routes/auth.js";
@@ -19,6 +20,10 @@ const app = Fastify({
 // ─── Plugins ─────────────────────────────────────────────────────────────────
 
 await app.register(helmet, { contentSecurityPolicy: false });
+
+await app.register(rateLimit, {
+  global: false, // aplica apenas onde config: { rateLimit: ... } for definido
+});
 
 const allowedOrigins = new Set(
   [
@@ -39,6 +44,17 @@ await app.register(cors, {
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug", "x-user-id"],
+});
+
+// ─── Error handler global (evita vazar stack trace) ──────────────────────────
+
+app.setErrorHandler((error, _request, reply) => {
+  app.log.error(error);
+  const statusCode = error.statusCode ?? 500;
+  if (statusCode >= 500) {
+    return reply.code(statusCode).send({ error: "Erro interno do servidor." });
+  }
+  return reply.code(statusCode).send({ error: error.message });
 });
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
