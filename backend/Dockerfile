@@ -19,6 +19,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3333
 
 RUN apk add --no-cache openssl
 
