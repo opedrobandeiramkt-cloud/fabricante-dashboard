@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { MOCK_USERS } from "@/lib/mock-users";
 import { api } from "@/lib/api";
 import type { AppUser, UserRole } from "@/lib/auth-types";
 
@@ -11,7 +10,7 @@ function loadUsers(): AppUser[] {
     const raw = localStorage.getItem(USERS_KEY);
     if (raw) return JSON.parse(raw) as AppUser[];
   } catch { /* ignore */ }
-  return MOCK_USERS;
+  return [];
 }
 
 function saveUsers(users: AppUser[]) {
