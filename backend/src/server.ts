@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { execFile } from "child_process";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -80,22 +79,6 @@ const host = process.env.HOST ?? "0.0.0.0";
 try {
   await app.listen({ port, host });
   console.log(`\n🚀 Backend rodando em http://localhost:${port}\n`);
-
-  // Roda prisma db push em background para não bloquear o healthcheck
-  execFile(
-    "node_modules/.bin/prisma",
-    ["db", "push", "--skip-generate"],
-    { cwd: process.cwd() },
-    (err, stdout, stderr) => {
-      if (err) {
-        console.error("[prisma] db push falhou:", err.message);
-        if (stderr) console.error(stderr);
-      } else {
-        console.log("[prisma] db push concluído");
-        if (stdout) console.log(stdout);
-      }
-    }
-  );
 } catch (err) {
   app.log.error(err);
   process.exit(1);
