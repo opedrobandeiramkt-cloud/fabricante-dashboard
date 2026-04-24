@@ -105,12 +105,15 @@ export async function quoteRoutes(app: FastifyInstance) {
 
   // PATCH /api/quotes/:id/won — marca como ganho
   app.patch<{ Params: { id: string } }>("/api/quotes/:id/won", async (request, reply) => {
-    const { tenantId, role, sub: userId } = request.jwtUser!;
+    const { tenantId, role, storeIds, sub: userId } = request.jwtUser!;
     const { id } = request.params;
 
     const existing = await prisma.quote.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Orçamento não encontrado." });
     if (role === "vendedor" && existing.vendedorId !== userId) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+    if (role === "fabricante" && storeIds.length > 0 && !storeIds.includes(existing.storeId)) {
       return reply.code(403).send({ error: "Acesso negado." });
     }
 
@@ -124,13 +127,16 @@ export async function quoteRoutes(app: FastifyInstance) {
 
   // PATCH /api/quotes/:id/lost — marca como perdido
   app.patch<{ Params: { id: string } }>("/api/quotes/:id/lost", async (request, reply) => {
-    const { tenantId, role, sub: userId } = request.jwtUser!;
+    const { tenantId, role, storeIds, sub: userId } = request.jwtUser!;
     const { id } = request.params;
 
     const existing = await prisma.quote.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Orçamento não encontrado." });
     if (existing.status === "ganho") return reply.code(400).send({ error: "Orçamento ganho não pode ser marcado como perdido." });
     if (role === "vendedor" && existing.vendedorId !== userId) {
+      return reply.code(403).send({ error: "Acesso negado." });
+    }
+    if (role === "fabricante" && storeIds.length > 0 && !storeIds.includes(existing.storeId)) {
       return reply.code(403).send({ error: "Acesso negado." });
     }
 
