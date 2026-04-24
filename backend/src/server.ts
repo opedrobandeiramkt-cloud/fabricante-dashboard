@@ -52,17 +52,33 @@ try {
   await app.listen({ port, host });
   console.log(`🚀 Backend rodando em http://${host}:${port}`);
 
-  // Aplica schema do banco em background com timeout — não bloqueia o healthcheck
-  const dbPush = execFile(
-    "node_modules/.bin/prisma",
-    ["db", "push", "--skip-generate", "--accept-data-loss"],
-    { timeout: 60_000, cwd: process.cwd() },
-    (err, stdout) => {
-      if (err) console.error("[prisma] db push erro:", err.message);
-      else { console.log("[prisma] db push ok"); if (stdout) console.log(stdout); }
-    }
-  );
-  dbPush.on("error", (e) => console.error("[prisma] erro ao iniciar db push:", e.message));
+  // Aplica schema e seed em background — não bloqueia o healthcheck
+  const runSetup = () => {
+    const dbPush = execFile(
+      "node_modules/.bin/prisma",
+      ["db", "push", "--skip-generate", "--accept-data-loss"],
+      { timeout: 60_000, cwd: process.cwd() },
+      (err, stdout) => {
+        if (err) { console.error("[prisma] db push erro:", err.message); return; }
+        console.log("[prisma] db push ok");
+        if (stdout) console.log(stdout);
+
+        // Roda seed após db push concluir (idempotente — usa upsert)
+        const seed = execFile(
+          "node",
+          ["dist/seed.js"],
+          { timeout: 30_000, cwd: process.cwd(), env: process.env },
+          (e2, out) => {
+            if (e2) console.error("[seed] erro:", e2.message);
+            else { console.log("[seed] ok"); if (out) console.log(out); }
+          }
+        );
+        seed.on("error", (e) => console.error("[seed] erro ao iniciar:", e.message));
+      }
+    );
+    dbPush.on("error", (e) => console.error("[prisma] erro ao iniciar db push:", e.message));
+  };
+  runSetup();
 } catch (err) {
   console.error("[startup] CRASH:", err);
   process.exit(1);
