@@ -19,6 +19,7 @@ model Tenant {
   leads        Lead[]
   leadEvents   LeadEvent[]
   users        User[]
+  quotes       Quote[]
 
   @@map("tenants")
 }
@@ -31,10 +32,12 @@ model Store {
   city       String?
   state      String?
   externalId String? @map("external_id")
+  storeType  String  @default("splash") @map("store_type") // "splash" | "igui"
 
   tenant     Tenant      @relation(fields: [tenantId], references: [id])
   leads      Lead[]
   leadEvents LeadEvent[]
+  quotes     Quote[]
 
   @@unique([tenantId, externalId])
   @@index([tenantId])
@@ -71,7 +74,7 @@ model Lead {
   enteredAt            DateTime  @map("entered_at")
   closedAt             DateTime? @map("closed_at")
   firstResponseMinutes Int?      @map("first_response_minutes")
-  salespersonCrmId     String?   @map("salesperson_crm_id") // ID/email do agente Helena vinculado
+  salespersonCrmId     String?   @map("salesperson_crm_id")
   metadata             Json      @default("{}")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
@@ -118,11 +121,11 @@ model User {
   email          String
   passwordHash   String   @map("password_hash")
   name           String
-  role           String   @default("fabricante") // "admin" | "fabricante"
+  role           String   @default("fabricante") // "admin" | "fabricante" | "vendedor"
   storeIds       Json     @default("[]") @map("store_ids")
   avatarInitials String   @map("avatar_initials")
-  salesGoal      Int?     @map("sales_goal")    // meta mensal de vendas fechadas (vendedor)
-  crmUserId      String?  @map("crm_user_id")   // ID/email do agente no Helena CRM (vendedor)
+  salesGoal      Int?     @map("sales_goal")
+  crmUserId      String?  @map("crm_user_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
@@ -130,6 +133,31 @@ model User {
   @@unique([tenantId, email])
   @@index([tenantId])
   @@map("users")
+}
+
+// ─── Orçamentos ───────────────────────────────────────────────────────────────
+model Quote {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  storeId       String    @map("store_id")
+  vendedorId    String?   @map("vendedor_id")
+  vendedorName  String    @map("vendedor_name")
+  clientName    String    @map("client_name")
+  proposalValue Float     @map("proposal_value")
+  status        String    @default("pendente") // "pendente" | "ganho" | "perdido"
+  formData      Json      @map("form_data")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt     @map("updated_at")
+  wonAt         DateTime? @map("won_at")
+  lostAt        DateTime? @map("lost_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@index([tenantId, storeId,    createdAt(sort: Desc)])
+  @@index([tenantId, status,     createdAt(sort: Desc)])
+  @@index([tenantId, vendedorId, createdAt(sort: Desc)])
+  @@map("quotes")
 }
 
 // ─── Tokens de reset de senha ─────────────────────────────────────────────────
@@ -142,6 +170,7 @@ model PasswordResetToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([token])
+  @@index([email])
   @@map("password_reset_tokens")
 }
 

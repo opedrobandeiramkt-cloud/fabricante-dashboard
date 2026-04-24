@@ -8,14 +8,17 @@ import type {
   TrendPoint,
 } from "./types";
 import type { AppUser } from "./auth-types";
+import type { SavedQuote } from "./pool-data";
+import { authToken } from "./auth-token";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 const TENANT   = import.meta.env.VITE_TENANT_SLUG ?? "igui";
 
-async function apiFetch<T>(path: string, options?: RequestInit & { userId?: string }): Promise<T> {
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = authToken.get();
   const headers: Record<string, string> = {
     "x-tenant-slug": TENANT,
-    ...(options?.userId ? { "x-user-id": options.userId } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
     ...(options?.body ? { "Content-Type": "application/json" } : {}),
   };
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
@@ -50,7 +53,7 @@ export const api = {
     return apiFetch(`/api/dashboard/ranking?${buildParams(storeIds, period)}`);
   },
 
-  stores(): Promise<{ id: string; name: string; city: string; state: string }[]> {
+  stores(): Promise<{ id: string; name: string; city: string; state: string; storeType?: string }[]> {
     return apiFetch("/api/dashboard/stores");
   },
 
@@ -64,60 +67,78 @@ export const api = {
     return apiFetch(`/api/dashboard/goal?${params}`);
   },
 
-  login(email: string, password: string): Promise<{ user: AppUser }> {
+  login(email: string, password: string): Promise<{ user: AppUser; token: string }> {
     return apiFetch("/api/auth/login", {
       method: "POST",
       body:   JSON.stringify({ email, password }),
     });
   },
 
-  listUsers(adminId: string): Promise<AppUser[]> {
-    return apiFetch("/api/auth/users", { userId: adminId });
+  listUsers(): Promise<AppUser[]> {
+    return apiFetch("/api/auth/users");
   },
 
-  createUser(adminId: string, data: { name: string; email: string; password: string; role: string; storeIds: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
+  createUser(data: { name: string; email: string; password: string; role: string; storeIds: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
     return apiFetch("/api/auth/users", {
       method: "POST",
-      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  updateUser(adminId: string, id: string, data: { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
+  updateUser(id: string, data: { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string }): Promise<{ user: AppUser }> {
     return apiFetch(`/api/auth/users/${id}`, {
       method: "PUT",
-      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  deleteUser(adminId: string, id: string): Promise<{ ok: boolean }> {
-    return apiFetch(`/api/auth/users/${id}`, {
-      method: "DELETE",
-      userId: adminId,
-    });
+  deleteUser(id: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/auth/users/${id}`, { method: "DELETE" });
   },
 
-  createStore(adminId: string, data: { name: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; createdAt: string; active: boolean }> {
+  createStore(data: { name: string; city?: string; state?: string; externalId?: string; storeType?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; storeType: string; createdAt: string; active: boolean }> {
     return apiFetch("/api/stores", {
       method: "POST",
-      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  updateStore(adminId: string, id: string, data: { name?: string; city?: string; state?: string; externalId?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; createdAt: string; active: boolean }> {
+  updateStore(id: string, data: { name?: string; city?: string; state?: string; externalId?: string; storeType?: string }): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; storeType: string; createdAt: string; active: boolean }> {
     return apiFetch(`/api/stores/${id}`, {
       method: "PUT",
-      userId: adminId,
       body:   JSON.stringify(data),
     });
   },
 
-  deleteStore(adminId: string, id: string): Promise<{ ok: boolean }> {
-    return apiFetch(`/api/stores/${id}`, {
-      method: "DELETE",
-      userId: adminId,
+  deleteStore(id: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/stores/${id}`, { method: "DELETE" });
+  },
+
+  // ── Orçamentos ───────────────────────────────────────────────────────────────
+
+  listQuotes(): Promise<SavedQuote[]> {
+    return apiFetch("/api/quotes");
+  },
+
+  createQuote(data: Omit<SavedQuote, "id" | "date">): Promise<SavedQuote> {
+    return apiFetch("/api/quotes", {
+      method: "POST",
+      body:   JSON.stringify(data),
     });
+  },
+
+  updateQuote(id: string, data: Partial<Omit<SavedQuote, "id" | "wonAt">>): Promise<SavedQuote> {
+    return apiFetch(`/api/quotes/${id}`, {
+      method: "PUT",
+      body:   JSON.stringify(data),
+    });
+  },
+
+  markQuoteWon(id: string): Promise<SavedQuote> {
+    return apiFetch(`/api/quotes/${id}/won`, { method: "PATCH" });
+  },
+
+  markQuoteLost(id: string): Promise<SavedQuote> {
+    return apiFetch(`/api/quotes/${id}/lost`, { method: "PATCH" });
   },
 };

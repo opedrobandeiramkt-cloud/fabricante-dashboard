@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { getPeriodRange, getPreviousPeriodRange, type Period } from "../lib/date-ranges.js";
+import { requireAuth } from "../lib/require-auth.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,17 +34,12 @@ type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string
 
 export async function dashboardRoutes(app: FastifyInstance) {
 
-  // Middleware: resolve tenant via slug no header
+  // Middleware: JWT obrigatório + resolve tenant a partir do token
   app.addHook("preHandler", async (request, reply) => {
-    const tenantSlug = request.headers["x-tenant-slug"] as string;
-    if (!tenantSlug) {
-      return reply.code(400).send({ error: "Header x-tenant-slug obrigatório" });
-    }
-    const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
-    if (!tenant) {
-      return reply.code(404).send({ error: "Tenant não encontrado" });
-    }
-    (request as unknown as Record<string, unknown>).tenant = tenant;
+    await requireAuth(request, reply);
+    if (reply.sent) return;
+    const { tenantId } = request.jwtUser!;
+    (request as unknown as Record<string, unknown>).tenant = { id: tenantId };
   });
 
   // ── GET /api/dashboard/kpis ──────────────────────────────────────────────────
@@ -53,8 +49,16 @@ export async function dashboardRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const tenant      = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period      = (request.query.period ?? "30d") as Period;
-      const storeIds    = request.query.storeIds?.split(",").filter(Boolean) ?? [];
       const salesperson = request.query.salesperson;
+
+      // Aplica filtro de loja de acordo com o papel do usuário (segurança server-side)
+      const { role, storeIds: allowedStoreIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0
+          ? storeIds.filter((id) => allowedStoreIds.includes(id))
+          : allowedStoreIds;
+      }
 
       const { start, end }     = getPeriodRange(period);
       const { start: ps, end: pe } = getPreviousPeriodRange(period);
@@ -162,7 +166,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
-      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const { role, storeIds: allowedIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      }
 
       const { start, end } = getPeriodRange(period);
       const baseFilter = { tenantId: tenant.id, ...buildStoreFilter(storeIds) };
@@ -222,7 +230,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
-      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const { role, storeIds: allowedIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      }
 
       const { start, end } = getPeriodRange(period);
 
@@ -282,7 +294,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
-      const storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      const { role, storeIds: allowedIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      }
 
       const { start, end } = getPeriodRange(period);
 
@@ -423,10 +439,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
   // ── GET /api/dashboard/stores ────────────────────────────────────────────────
   app.get("/api/dashboard/stores", async (request, reply) => {
     const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const { role, storeIds: allowedIds } = request.jwtUser!;
     const stores = await prisma.store.findMany({
-      where:   { tenantId: tenant.id },
+      where:   {
+        tenantId: tenant.id,
+        ...(role !== "admin" && allowedIds.length > 0 ? { id: { in: allowedIds } } : {}),
+      },
       orderBy: { name: "asc" },
-      select:  { id: true, name: true, city: true, state: true, externalId: true },
+      select:  { id: true, name: true, city: true, state: true, externalId: true, storeType: true },
     });
     return reply.send(stores);
   });

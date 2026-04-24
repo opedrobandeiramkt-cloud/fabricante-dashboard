@@ -1,9 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { useUsersContext } from "@/contexts/UsersContext";
 import { api } from "@/lib/api";
+import { authToken } from "@/lib/auth-token";
 import type { AppUser } from "@/lib/auth-types";
-
-const USE_API = import.meta.env.VITE_USE_API === "true";
 
 const STORAGE_KEY = "igui_auth_user";
 
@@ -14,14 +12,12 @@ interface AuthContextValue {
   logout:          () => void;
   isAdmin:         boolean;
   isVendedor:      boolean;
-  /** IDs de loja que o usuário tem permissão. [] = todas (admin). */
   allowedStoreIds: string[];
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { authenticateUser } = useUsersContext();
   const [user, setUser] = useState<AppUser | null>(() => {
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -31,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  // Sincroniza com sessionStorage sempre que o user mudar
   useEffect(() => {
     if (user) {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
@@ -44,27 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> {
-    if (USE_API) {
-      try {
-        const { user: found } = await api.login(email, password);
-        setUser(found);
-        return { success: true };
-      } catch (err) {
-        return { success: false, error: err instanceof Error ? err.message : "E-mail ou senha incorretos." };
-      }
+    try {
+      const { user: found, token } = await api.login(email, password);
+      authToken.set(token);
+      setUser(found);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "E-mail ou senha incorretos." };
     }
-
-    // Fallback mock (dev sem API)
-    await new Promise((r) => setTimeout(r, 600));
-    const found = authenticateUser(email, password);
-    if (!found) {
-      return { success: false, error: "E-mail ou senha incorretos." };
-    }
-    setUser(found);
-    return { success: true };
   }
 
   function logout() {
+    authToken.clear();
     setUser(null);
   }
 

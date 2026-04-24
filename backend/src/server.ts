@@ -7,6 +7,7 @@ import { ingestRoutes } from "./routes/ingest.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { authRoutes } from "./routes/auth.js";
 import { storeRoutes } from "./routes/stores.js";
+import { quoteRoutes } from "./routes/quotes.js";
 
 const app = Fastify({
   logger: {
@@ -63,6 +64,7 @@ await app.register(ingestRoutes);
 await app.register(dashboardRoutes);
 await app.register(authRoutes);
 await app.register(storeRoutes);
+await app.register(quoteRoutes);
 
 // Health check global
 app.get("/health", async () => ({ ok: true, uptime: process.uptime() }));

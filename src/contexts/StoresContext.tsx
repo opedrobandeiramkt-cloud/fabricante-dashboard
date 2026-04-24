@@ -3,33 +3,16 @@ import { STORES as DEFAULT_STORES } from "@/lib/constants";
 import type { Store } from "@/lib/types";
 import { api } from "@/lib/api";
 
-const USE_API      = import.meta.env.VITE_USE_API === "true";
-const BASE_URL     = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
-const TENANT       = import.meta.env.VITE_TENANT_SLUG ?? "igui";
-const STORAGE_KEY  = "igui_stores";
-const DELETED_KEY  = "igui_deleted_stores"; // IDs permanentemente excluídos
+const USE_API = import.meta.env.VITE_USE_API === "true";
 
-function loadDeletedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(DELETED_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch { /* ignore */ }
-  return new Set();
-}
-
-function saveDeletedId(id: string) {
-  const ids = loadDeletedIds();
-  ids.add(id);
-  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
-}
+const STORAGE_KEY = "igui_stores";
 
 function loadStores(): Store[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const stores: Store[] = raw ? (JSON.parse(raw) as Store[]) : DEFAULT_STORES;
 
-    // Migração: storeType era salvo em chave separada "igui-store-types" antes do commit 0836713.
-    // Se alguma loja não tiver storeType, tenta herdar do formato antigo.
+    // Migração: storeType era salvo em chave separada antes do commit 0836713.
     const oldRaw = localStorage.getItem("igui-store-types");
     if (oldRaw) {
       const oldTypes = JSON.parse(oldRaw) as Record<string, "splash" | "igui">;
@@ -69,47 +52,25 @@ const StoresContext = createContext<StoresContextValue | null>(null);
 export function StoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>(loadStores);
 
-  // Quando usa API real, sincroniza com o banco preservando customizações locais.
+  // Sincroniza com a API ao montar (após login o token já está disponível)
   useEffect(() => {
     if (!USE_API) return;
-    fetch(`${BASE_URL}/api/dashboard/stores`, {
-      headers: { "x-tenant-slug": TENANT },
-    })
-      .then((r) => r.json())
-      .then((data: { id: string; name: string; city: string; state: string; externalId?: string }[]) => {
-        const localMap   = new Map(loadStores().map((s) => [s.id, s]));
-        const deletedIds = loadDeletedIds();
-        const apiIds     = new Set(data.map((s) => s.id));
-
-        // Lojas vindas da API com customizações locais preservadas
-        const apiStores: Store[] = data
-          .filter((s) => !deletedIds.has(s.id))
-          .map((s) => {
-            const local = localMap.get(s.id);
-            return {
-              id:         s.id,
-              name:       local?.name       ?? s.name,
-              city:       local?.city       ?? s.city,
-              state:      local?.state      ?? s.state,
-              externalId: local?.externalId ?? s.externalId,
-              phone:      local?.phone,      // campo apenas local (não existe no banco)
-              email:      local?.email,      // campo apenas local (não existe no banco)
-              active:     local?.active      ?? true,
-              storeType:  local?.storeType   ?? "splash",
-              createdAt:  local?.createdAt   ?? new Date().toISOString(),
-            };
-          });
-
-        // Lojas criadas localmente que ainda não existem na API
-        const localOnlyStores = loadStores().filter(
-          (s) => !apiIds.has(s.id) && !deletedIds.has(s.id),
-        );
-
-        const allStores = [...apiStores, ...localOnlyStores];
+    api.stores()
+      .then((data) => {
+        const allStores: Store[] = data.map((s) => ({
+          id:         s.id,
+          name:       s.name,
+          city:       s.city ?? "",
+          state:      s.state ?? "",
+          externalId: s.externalId,
+          storeType:  (s.storeType as "splash" | "igui") ?? "splash",
+          active:     true,
+          createdAt:  new Date().toISOString(),
+        }));
         setStores(allStores);
         saveStores(allStores);
       })
-      .catch(() => { /* mantém lojas do localStorage */ });
+      .catch(() => { /* mantém lojas do localStorage se API falhar */ });
   }, []);
 
   function persist(updated: Store[]) {
@@ -117,18 +78,20 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     saveStores(updated);
   }
 
-  async function addStore(data: Omit<Store, "id" | "createdAt">, adminId?: string): Promise<Store> {
-    if (USE_API && adminId) {
+  async function addStore(data: Omit<Store, "id" | "createdAt">, _adminId?: string): Promise<Store> {
+    if (USE_API) {
       try {
-        const created = await api.createStore(adminId, {
+        const created = await api.createStore({
           name:       data.name,
           city:       data.city,
           state:      data.state,
           externalId: data.externalId,
+          storeType:  data.storeType,
         });
         const newStore: Store = {
           ...data,
           id:        created.id,
+          storeType: (created.storeType as "splash" | "igui") ?? data.storeType ?? "splash",
           createdAt: new Date().toISOString(),
         };
         persist([...stores, newStore]);
@@ -144,23 +107,23 @@ export function StoresProvider({ children }: { children: ReactNode }) {
     return newStore;
   }
 
-  async function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>, adminId?: string): Promise<void> {
-    if (USE_API && adminId) {
-      await api.updateStore(adminId, id, {
+  async function updateStore(id: string, data: Partial<Omit<Store, "id" | "createdAt">>, _adminId?: string): Promise<void> {
+    if (USE_API) {
+      await api.updateStore(id, {
         name:       data.name,
         city:       data.city,
         state:      data.state,
         externalId: data.externalId,
+        storeType:  data.storeType,
       }).catch(() => { /* persiste localmente mesmo se API falhar */ });
     }
     persist(stores.map((s) => (s.id === id ? { ...s, ...data } : s)));
   }
 
-  async function deleteStore(id: string, adminId?: string): Promise<void> {
-    if (USE_API && adminId) {
-      await api.deleteStore(adminId, id).catch(() => { /* continua com exclusão local */ });
+  async function deleteStore(id: string, _adminId?: string): Promise<void> {
+    if (USE_API) {
+      await api.deleteStore(id).catch(() => { /* continua com exclusão local */ });
     }
-    saveDeletedId(id);
     persist(stores.filter((s) => s.id !== id));
   }
 
