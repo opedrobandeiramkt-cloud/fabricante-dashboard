@@ -60,13 +60,13 @@ async function main() {
         avatarInitials: "AD",
       },
     });
-    console.log(`✅ Admin criado: ${adminEmail} / ${adminPassword}`);
+    console.log(`✅ Admin criado: ${adminEmail}`);
   } else {
     await prisma.user.update({
       where: { id: existingAdmin.id },
       data:  { passwordHash },
     });
-    console.log(`✅ Senha do admin redefinida: ${existingAdmin.email} / ${adminPassword}`);
+    console.log(`✅ Senha do admin redefinida: ${existingAdmin.email}`);
   }
 
   console.log("\n🎉 Seed concluído!\n");
