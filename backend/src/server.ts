@@ -24,7 +24,9 @@ const app = Fastify({
 await app.register(helmet, { contentSecurityPolicy: false });
 
 await app.register(rateLimit, {
-  global: false, // aplica apenas onde config: { rateLimit: ... } for definido
+  global:     true,
+  max:        100,
+  timeWindow: "1 minute",
 });
 
 const allowedOrigins = new Set(
