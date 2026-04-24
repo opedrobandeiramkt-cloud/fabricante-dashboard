@@ -139,6 +139,9 @@ export async function authRoutes(app: FastifyInstance) {
       if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
       const sharedStore = (existing.storeIds as string[]).some((s) => storeIds.includes(s));
       if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });
+      if (body.role && body.role !== "vendedor") {
+        return reply.code(403).send({ error: "Fabricante só pode atribuir role vendedor." });
+      }
     }
 
     const avatarInitials = body.name
