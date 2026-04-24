@@ -1,6 +1,7 @@
 import { type FastifyInstance } from "fastify";
 import { randomBytes } from "crypto";
 import { Resend } from "resend";
+import { type UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword } from "../lib/crypto.js";
 import { signToken } from "../lib/jwt.js";
@@ -113,7 +114,7 @@ export async function authRoutes(app: FastifyInstance) {
         email:          body.email.toLowerCase().trim(),
         passwordHash,
         name:           body.name,
-        role:           body.role,
+        role:           body.role as UserRole,
         storeIds:       body.role === "admin" ? [] : (body.storeIds ?? []),
         avatarInitials,
         salesGoal:      body.salesGoal ?? null,
