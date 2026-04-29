@@ -5,7 +5,7 @@ import { type UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword } from "../lib/crypto.js";
 import { signToken } from "../lib/jwt.js";
-import { requireAdminOrLojista } from "../lib/require-auth.js";
+import { requireAuth } from "../lib/require-auth.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const FROM_EMAIL   = process.env.FROM_EMAIL    ?? "noreply@igui.com.br";
@@ -22,12 +22,25 @@ function userToDto(user: { id: string; name: string; email: string; role: string
     id:             user.id,
     name:           user.name,
     email:          user.email,
-    role:           user.role as "admin" | "fabricante" | "lojista" | "vendedor",
+    role:           user.role as "admin" | "fabricante" | "lojista" | "vendedor" | "analista_crm",
     storeIds:       (user.storeIds as string[]) ?? [],
     avatarInitials: user.avatarInitials,
     salesGoal:      user.salesGoal ?? null,
     crmUserId:      user.crmUserId ?? null,
   };
+}
+
+/** Middleware: apenas admin e lojista podem gerenciar usuários */
+async function requireAdminOrLojista(
+  request: import("fastify").FastifyRequest,
+  reply: import("fastify").FastifyReply
+): Promise<void> {
+  await requireAuth(request, reply);
+  if (reply.sent) return;
+  const { role } = request.jwtUser!;
+  if (role !== "admin" && role !== "lojista") {
+    return void reply.code(403).send({ error: "Acesso negado." });
+  }
 }
 
 export async function authRoutes(app: FastifyInstance) {
@@ -76,6 +89,7 @@ export async function authRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "asc" },
     });
 
+    // Lojista vê apenas vendedores das suas lojas
     const users = role === "lojista"
       ? allUsers.filter((u) =>
           u.role === "vendedor" &&
@@ -90,11 +104,18 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/users", {
     preHandler: requireAdminOrLojista,
   }, async (req, reply) => {
-    const { tenantId, role } = req.jwtUser!;
+    const { tenantId, role, storeIds } = req.jwtUser!;
     const body = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string };
 
-    if (role === "lojista" && body.role !== "vendedor") {
-      return reply.code(403).send({ error: "Lojista só pode criar vendedores." });
+    // Lojista só pode criar vendedores nas suas lojas
+    if (role === "lojista") {
+      if (body.role !== "vendedor") {
+        return reply.code(403).send({ error: "Lojista só pode criar vendedores." });
+      }
+      const allInScope = (body.storeIds ?? []).every((id) => storeIds.includes(id));
+      if (!allInScope) {
+        return reply.code(403).send({ error: "Lojas fora da sua jurisdição." });
+      }
     }
 
     if (!body.name || !body.email || !body.password || !body.role) {
@@ -137,13 +158,12 @@ export async function authRoutes(app: FastifyInstance) {
     const existing = await prisma.user.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
 
+    // Lojista só pode editar vendedores das suas lojas
     if (role === "lojista") {
       if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
       const sharedStore = (existing.storeIds as string[]).some((s) => storeIds.includes(s));
       if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });
-      if (body.role && body.role !== "vendedor") {
-        return reply.code(403).send({ error: "Lojista só pode atribuir role vendedor." });
-      }
+      if (body.role && body.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
     }
 
     const avatarInitials = body.name
@@ -178,6 +198,7 @@ export async function authRoutes(app: FastifyInstance) {
     const existing = await prisma.user.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
 
+    // Lojista só pode deletar vendedores das suas lojas
     if (role === "lojista") {
       if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
       const sharedStore = (existing.storeIds as string[]).some((s) => storeIds.includes(s));

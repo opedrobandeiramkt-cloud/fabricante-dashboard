@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, UserCircle2, Save, Eye, EyeOff, ShieldCheck, Store, UserRound } from "lucide-react";
+import { X, UserCircle2, Save, Eye, EyeOff, ShieldCheck, Store, UserRound, BarChart3, Building2 } from "lucide-react";
 import { useStores } from "@/contexts/StoresContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppUser } from "@/lib/auth-types";
@@ -9,6 +9,10 @@ interface UserFormModalProps {
   user:    AppUser | null; // null = novo
   onSave:  (data: UserFormData) => Promise<string | null>;
   onClose: () => void;
+}
+
+function getDefaultRole(isLojista: boolean): UserFormData["role"] {
+  return isLojista ? "vendedor" : "fabricante";
 }
 
 const EMPTY: UserFormData = {
@@ -70,7 +74,7 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "E-mail inválido";
     if (isNew && !form.password) e.password = "Senha obrigatória";
     if (isNew && form.password && form.password.length < 6) e.password = "Mínimo 6 caracteres";
-    if ((form.role === "fabricante" || form.role === "vendedor") && form.storeIds.length === 0)
+    if (form.role !== "admin" && form.storeIds.length === 0)
       e.storeIds = "Selecione ao menos uma loja";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -154,25 +158,25 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Perfil de acesso <span className="text-[hsl(var(--danger))]">*</span></label>
               <div className="grid grid-cols-2 gap-3">
-                {!isLojista && (
-                  <RoleOption
-                    selected={form.role === "fabricante"}
-                    onClick={() => set("role", "fabricante")}
-                    icon={<Store className="h-4 w-4" />}
-                    title="Fabricante"
-                    description="Vê apenas suas lojas"
-                    accent="success"
-                  />
-                )}
-                {!isLojista && (
-                  <RoleOption
-                    selected={form.role === "lojista"}
-                    onClick={() => set("role", "lojista")}
-                    icon={<Store className="h-4 w-4" />}
-                    title="Lojista"
-                    description="Gerencia sua loja e vendedores"
-                    accent="success"
-                  />
+                {isAdmin && (
+                  <>
+                    <RoleOption
+                      selected={form.role === "fabricante"}
+                      onClick={() => set("role", "fabricante")}
+                      icon={<Store className="h-4 w-4" />}
+                      title="Fabricante"
+                      description="Vê lojas da sua jurisdição"
+                      accent="success"
+                    />
+                    <RoleOption
+                      selected={form.role === "lojista"}
+                      onClick={() => set("role", "lojista")}
+                      icon={<Building2 className="h-4 w-4" />}
+                      title="Lojista"
+                      description="Gerencia vendedores da loja"
+                      accent="primary"
+                    />
+                  </>
                 )}
                 <RoleOption
                   selected={form.role === "vendedor"}
@@ -183,20 +187,30 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
                   accent="warning"
                 />
                 {isAdmin && (
-                  <RoleOption
-                    selected={form.role === "admin"}
-                    onClick={() => set("role", "admin")}
-                    icon={<ShieldCheck className="h-4 w-4" />}
-                    title="Administrador"
-                    description="Acesso total ao sistema"
-                    accent="primary"
-                  />
+                  <>
+                    <RoleOption
+                      selected={form.role === "analista_crm"}
+                      onClick={() => set("role", "analista_crm")}
+                      icon={<BarChart3 className="h-4 w-4" />}
+                      title="Analista de CRM"
+                      description="Visualiza e exporta relatórios"
+                      accent="primary"
+                    />
+                    <RoleOption
+                      selected={form.role === "admin"}
+                      onClick={() => set("role", "admin")}
+                      icon={<ShieldCheck className="h-4 w-4" />}
+                      title="Administrador"
+                      description="Acesso total ao sistema"
+                      accent="primary"
+                    />
+                  </>
                 )}
               </div>
             </div>
 
-            {/* Lojas — para fabricante e vendedor */}
-            {(form.role === "fabricante" || form.role === "vendedor") && (
+            {/* Lojas — para todos exceto admin */}
+            {form.role !== "admin" && (
               <Field label="Lojas sob responsabilidade" required error={errors.storeIds}>
                 <div className="space-y-2 mt-1">
                   {stores.map((store) => {

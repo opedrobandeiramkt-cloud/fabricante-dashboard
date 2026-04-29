@@ -121,6 +121,7 @@ enum UserRole {
   fabricante
   lojista
   vendedor
+  analista_crm
 }
 
 // ─── Usuários do sistema ──────────────────────────────────────────────────────

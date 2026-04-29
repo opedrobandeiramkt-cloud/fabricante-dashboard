@@ -49,6 +49,14 @@ export const MOCK_USERS: AppUser[] = [
     avatarInitials: "FC",
   },
   {
+    id:             "user-loj-1",
+    name:           "Maria Lojista",
+    email:          "maria.lojista@igui.com.br",
+    role:           "lojista",
+    storeIds:       ["loja-01"],
+    avatarInitials: "ML",
+  },
+  {
     id:             "user-v1",
     name:           "João Vendedor",
     email:          "joao.vendedor@igui.com.br",
@@ -57,6 +65,14 @@ export const MOCK_USERS: AppUser[] = [
     avatarInitials: "JV",
     salesGoal:      5,
     crmUserId:      "joao.vendedor@igui.com.br",
+  },
+  {
+    id:             "user-crm-1",
+    name:           "Lucas Analista",
+    email:          "lucas.analista@igui.com.br",
+    role:           "analista_crm",
+    storeIds:       ["loja-01", "loja-02"],
+    avatarInitials: "LA",
   },
 ];
 
@@ -67,7 +83,9 @@ const MOCK_PASSWORDS: Record<string, string> = {
   "user-fab-pr":  "igui2024",
   "user-fab-mg":  "igui2024",
   "user-fab-rj":  "igui2024",
+  "user-loj-1":   "igui2024",
   "user-v1":      "igui2024",
+  "user-crm-1":   "igui2024",
 };
 
 export function authenticateUser(

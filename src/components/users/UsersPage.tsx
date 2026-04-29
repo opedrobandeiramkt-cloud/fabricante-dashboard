@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCircle2, UserRound } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ShieldCheck, Store, AlertTriangle, UserCircle2, UserRound, Building2, BarChart3 } from "lucide-react";
 import { UserFormModal } from "./UserFormModal";
 import { useUsersContext } from "@/contexts/UsersContext";
 import type { UserFormData } from "@/hooks/useUsers";
@@ -8,7 +8,7 @@ import { useStores } from "@/contexts/StoresContext";
 import type { AppUser } from "@/lib/auth-types";
 
 export function UsersPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, canManageUsers } = useAuth();
   const { users, addUser, updateUser, deleteUser } = useUsersContext();
   const { stores } = useStores();
 
@@ -42,8 +42,9 @@ export function UsersPage() {
 
   const adminCount      = visibleUsers.filter((u) => u.role === "admin").length;
   const fabricanteCount = visibleUsers.filter((u) => u.role === "fabricante").length;
-  const lojistasCount   = visibleUsers.filter((u) => u.role === "lojista").length;
+  const lojistaCount    = visibleUsers.filter((u) => u.role === "lojista").length;
   const vendedorCount   = visibleUsers.filter((u) => u.role === "vendedor").length;
+  const analistaCount   = visibleUsers.filter((u) => u.role === "analista_crm").length;
 
   return (
     <div className="space-y-6">
@@ -56,17 +57,20 @@ export function UsersPage() {
             {visibleUsers.length} usuário{visibleUsers.length !== 1 ? "s" : ""}
             {adminCount > 0 && <>{" · "}<span className="text-primary">{adminCount} admin</span></>}
             {fabricanteCount > 0 && <>{" · "}<span className="text-[hsl(var(--success))]">{fabricanteCount} fabricante{fabricanteCount !== 1 ? "s" : ""}</span></>}
-            {lojistasCount > 0 && <>{" · "}<span className="text-[hsl(var(--success))]">{lojistasCount} lojista{lojistasCount !== 1 ? "s" : ""}</span></>}
+            {lojistaCount > 0 && <>{" · "}<span className="text-blue-500">{lojistaCount} lojista{lojistaCount !== 1 ? "s" : ""}</span></>}
             {vendedorCount > 0 && <>{" · "}<span className="text-[hsl(var(--warning))]">{vendedorCount} vendedor{vendedorCount !== 1 ? "es" : ""}</span></>}
+            {analistaCount > 0 && <>{" · "}<span className="text-purple-500">{analistaCount} analista{analistaCount !== 1 ? "s" : ""}</span></>}
           </p>
         </div>
-        <button
-          onClick={() => setModalUser("new")}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Usuário
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setModalUser("new")}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors self-start sm:self-auto"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Usuário
+          </button>
+        )}
       </div>
 
       {/* Busca */}
@@ -105,8 +109,10 @@ export function UsersPage() {
                   <td className="px-4 sm:px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                        u.role === "admin"      ? "bg-primary/15 text-primary" :
-                        u.role === "vendedor"   ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" :
+                        u.role === "admin"        ? "bg-primary/15 text-primary" :
+                        u.role === "vendedor"     ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" :
+                        u.role === "lojista"      ? "bg-blue-500/15 text-blue-500" :
+                        u.role === "analista_crm" ? "bg-purple-500/15 text-purple-500" :
                         "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
                       }`}>
                         {u.avatarInitials}
@@ -134,8 +140,12 @@ export function UsersPage() {
                         <UserRound className="h-3 w-3" /> Vendedor
                       </span>
                     ) : u.role === "lojista" ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">
-                        <Store className="h-3 w-3" /> Lojista
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500">
+                        <Building2 className="h-3 w-3" /> Lojista
+                      </span>
+                    ) : u.role === "analista_crm" ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-500">
+                        <BarChart3 className="h-3 w-3" /> Analista CRM
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">

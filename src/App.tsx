@@ -47,7 +47,7 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  const { user, isAdmin, isFabricante, isLojista, isVendedor, allowedStoreIds, logout } = useAuth();
+  const { user, isAdmin, isFabricante, isLojista, isVendedor, isAnalistaCRM, canManageUsers, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
   const { reloadUsers } = useUsersContext();
 
@@ -98,7 +98,8 @@ function AuthenticatedApp() {
     [effectiveStoreIds, period, isVendedor, user?.crmUserId]
   );
 
-  const { wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
+  const { quotes, wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
+
   const { kpis: rawKpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
 
   const orcamentosRevenue = wonRevenueForPeriod({ storeIds: effectiveStoreIds, period });
@@ -140,7 +141,12 @@ function AuthenticatedApp() {
     page === "dashboard" ? "Dashboard" :
     page === "stores"    ? "Lojas"     : "Usuários";
 
-  const roleLabel = isAdmin ? "Administrador" : isVendedor ? "Vendedor" : isLojista ? "Lojista" : isFabricante ? "Fabricante" : "Fabricante";
+  const roleLabel =
+    isAdmin       ? "Administrador"   :
+    isLojista     ? "Lojista"         :
+    isVendedor    ? "Vendedor"        :
+    isAnalistaCRM ? "Analista de CRM" :
+                    "Fabricante";
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -155,6 +161,7 @@ function AuthenticatedApp() {
             isAdmin={isAdmin}
             isLojista={isLojista}
             isVendedor={isVendedor}
+            canManageUsers={canManageUsers}
             user={user}
             roleLabel={roleLabel}
             userMenuOpen={userMenuOpen}
@@ -178,6 +185,7 @@ function AuthenticatedApp() {
                 isAdmin={isAdmin}
                 isLojista={isLojista}
                 isVendedor={isVendedor}
+                canManageUsers={canManageUsers}
                 user={user}
                 roleLabel={roleLabel}
                 userMenuOpen={userMenuOpen}
@@ -298,17 +306,19 @@ function AuthenticatedApp() {
                     icon={<TrendingUp className="h-3.5 w-3.5" />}
                     label="Métricas"
                   />
-                  <DashTab
-                    active={dashboardTab === "orcamentos"}
-                    onClick={() => setDashboardTab("orcamentos")}
-                    icon={<FileText className="h-3.5 w-3.5" />}
-                    label="Orçamentos"
-                  />
+                  {!isAnalistaCRM && (
+                    <DashTab
+                      active={dashboardTab === "orcamentos"}
+                      onClick={() => setDashboardTab("orcamentos")}
+                      icon={<FileText className="h-3.5 w-3.5" />}
+                      label="Orçamentos"
+                    />
+                  )}
                 </div>
 
                 {dashboardTab === "metricas" ? (
                   isVendedor ? (
-                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
+                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} quotes={quotes} vendedorId={user?.id} />
                   ) : (
                     <div className="space-y-5">
                       {!isAdmin && (
@@ -355,7 +365,7 @@ function AuthenticatedApp() {
 
 /* ─── Sidebar contents ─────────────────────────────────────────────────────── */
 function SidebarContents({
-  page, onPageChange, isAdmin, isLojista, isVendedor, user, roleLabel,
+  page, onPageChange, isAdmin, isLojista, isVendedor, canManageUsers, user, roleLabel,
   userMenuOpen, setUserMenuOpen, logout, allowedStoreIds,
 }: {
   page: Page;
@@ -363,6 +373,7 @@ function SidebarContents({
   isAdmin: boolean;
   isLojista: boolean;
   isVendedor: boolean;
+  canManageUsers: boolean;
   user: { name: string; email: string; avatarInitials: string; role: string } | null;
   roleLabel: string;
   userMenuOpen: boolean;
@@ -402,7 +413,7 @@ function SidebarContents({
             label="Lojas"
           />
         )}
-        {(isAdmin || isLojista) && (
+        {canManageUsers && (
           <SidebarNavItem
             active={page === "users"}
             onClick={() => onPageChange("users")}
@@ -438,9 +449,11 @@ function SidebarContents({
               <div className="flex items-center gap-1 mt-1.5">
                 {isAdmin && <ShieldCheck className="h-3 w-3 text-primary" />}
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                  isAdmin   ? "bg-primary/10 text-primary" :
-                  isVendedor ? "bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]" :
-                              "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]"
+                  isAdmin                        ? "bg-primary/10 text-primary" :
+                  isVendedor                     ? "bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]" :
+                  isLojista                      ? "bg-blue-500/10 text-blue-500" :
+                  user?.role === "analista_crm"  ? "bg-purple-500/10 text-purple-500" :
+                                                   "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]"
                 }`}>
                   {roleLabel}
                 </span>

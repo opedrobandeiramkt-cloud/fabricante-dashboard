@@ -14,6 +14,10 @@ interface AuthContextValue {
   isFabricante:    boolean;
   isLojista:       boolean;
   isVendedor:      boolean;
+  isAnalistaCRM:   boolean;
+  canManageUsers:  boolean;
+  canExport:       boolean;
+  /** IDs de loja que o usuário tem permissão. [] = todas (admin). */
   allowedStoreIds: string[];
 }
 
@@ -60,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isFabricante    = user?.role === "fabricante";
   const isLojista       = user?.role === "lojista";
   const isVendedor      = user?.role === "vendedor";
+  const isAnalistaCRM   = user?.role === "analista_crm";
+  const canManageUsers  = isAdmin || isLojista;
+  const canExport       = !isVendedor;
   const allowedStoreIds = user?.storeIds ?? [];
 
   return (
@@ -73,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isFabricante,
         isLojista,
         isVendedor,
+        isAnalistaCRM,
+        canManageUsers,
+        canExport,
         allowedStoreIds,
       }}
     >
