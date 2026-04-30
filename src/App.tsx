@@ -47,7 +47,7 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  const { user, isAdmin, isFabricante, isLojista, isVendedor, isAnalistaCRM, canManageUsers, allowedStoreIds, logout } = useAuth();
+  const { user, isAdmin, isLojista, isVendedor, isAnalistaCRM, canManageUsers, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
   const { reloadUsers } = useUsersContext();
 
@@ -98,7 +98,7 @@ function AuthenticatedApp() {
     [effectiveStoreIds, period, isVendedor, user?.crmUserId]
   );
 
-  const { quotes, wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
+  const { wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
 
   const { kpis: rawKpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
 
@@ -318,7 +318,7 @@ function AuthenticatedApp() {
 
                 {dashboardTab === "metricas" ? (
                   isVendedor ? (
-                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} quotes={quotes} vendedorId={user?.id} />
+                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
                   ) : (
                     <div className="space-y-5">
                       {!isAdmin && (

@@ -11,10 +11,6 @@ interface UserFormModalProps {
   onClose: () => void;
 }
 
-function getDefaultRole(isLojista: boolean): UserFormData["role"] {
-  return isLojista ? "vendedor" : "fabricante";
-}
-
 const EMPTY: UserFormData = {
   name: "", email: "", role: "fabricante", storeIds: [], password: "", salesGoal: undefined, crmUserId: "",
 };
