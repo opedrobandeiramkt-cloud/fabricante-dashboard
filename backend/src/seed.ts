@@ -42,32 +42,27 @@ async function main() {
   }
   console.log(`✅ ${STAGES.length} etapas do funil processadas`);
 
-  // Garante que existe pelo menos um admin com senha conhecida
+  // Garante que existe um admin com o e-mail/senha configurados via env
   const adminEmail    = process.env.ADMIN_EMAIL    ?? "admin@igui.com.br";
   const adminPassword = process.env.ADMIN_PASSWORD ?? "admin2024";
+  const adminName     = process.env.ADMIN_NAME     ?? "Admin";
   const passwordHash  = await hashPassword(adminPassword);
+  const initials      = adminName.split(" ").slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("");
 
-  const existingAdmin = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: "admin" } });
-  if (!existingAdmin) {
-    await prisma.user.create({
-      data: {
-        tenantId: tenant.id,
-        email:          adminEmail,
-        passwordHash,
-        name:           "Admin",
-        role:           "admin",
-        storeIds:       [],
-        avatarInitials: "AD",
-      },
-    });
-    console.log(`✅ Admin criado: ${adminEmail}`);
-  } else {
-    await prisma.user.update({
-      where: { id: existingAdmin.id },
-      data:  { passwordHash },
-    });
-    console.log(`✅ Senha do admin redefinida: ${existingAdmin.email}`);
-  }
+  await prisma.user.upsert({
+    where:  { tenantId_email: { tenantId: tenant.id, email: adminEmail } },
+    create: {
+      tenantId: tenant.id,
+      email:          adminEmail,
+      passwordHash,
+      name:           adminName,
+      role:           "admin",
+      storeIds:       [],
+      avatarInitials: initials,
+    },
+    update: { passwordHash, role: "admin", name: adminName, avatarInitials: initials },
+  });
+  console.log(`✅ Admin: ${adminEmail}`);
 
   console.log("\n🎉 Seed concluído!\n");
   console.log("Tenant slug para usar nos requests: igui");
