@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
-  Download, Menu, X, FileText, TrendingUp,
+  Download, Menu, FileText, TrendingUp,
 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
