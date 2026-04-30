@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
-  Download, Menu, FileText, TrendingUp,
+  Download, Menu, FileText, TrendingUp, Zap,
 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
@@ -421,6 +421,13 @@ function SidebarContents({
             label="Usuários"
           />
         )}
+        {!isVendedor && (
+          <SidebarNavItemDisabled
+            icon={<Zap className="h-4 w-4" />}
+            label="Trackeamento"
+            badge="em breve"
+          />
+        )}
       </nav>
 
       {/* User section */}
@@ -497,6 +504,25 @@ function SidebarNavItem({ active, onClick, icon, label }: {
       {label}
       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />}
     </button>
+  );
+}
+
+/* ─── Sidebar nav item (disabled) ─────────────────────────────────────────── */
+function SidebarNavItemDisabled({ icon, label, badge }: {
+  icon:   React.ReactNode;
+  label:  string;
+  badge?: string;
+}) {
+  return (
+    <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground/40 cursor-not-allowed select-none">
+      <span>{icon}</span>
+      {label}
+      {badge && (
+        <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-secondary border border-border text-muted-foreground/60 whitespace-nowrap">
+          {badge}
+        </span>
+      )}
+    </div>
   );
 }
 
