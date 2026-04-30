@@ -5,7 +5,7 @@ import { type UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, verifyPassword } from "../lib/crypto.js";
 import { signToken } from "../lib/jwt.js";
-import { requireAdminOrFabricante } from "../lib/require-auth.js";
+import { requireAdminOrLojista } from "../lib/require-auth.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const FROM_EMAIL   = process.env.FROM_EMAIL    ?? "noreply@igui.com.br";
@@ -22,7 +22,7 @@ function userToDto(user: { id: string; name: string; email: string; role: string
     id:             user.id,
     name:           user.name,
     email:          user.email,
-    role:           user.role as "admin" | "fabricante" | "vendedor",
+    role:           user.role as "admin" | "fabricante" | "lojista" | "vendedor",
     storeIds:       (user.storeIds as string[]) ?? [],
     avatarInitials: user.avatarInitials,
     salesGoal:      user.salesGoal ?? null,
@@ -67,7 +67,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // GET /api/auth/users ───────────────────────────────────────────────────────
   app.get("/api/auth/users", {
-    preHandler: requireAdminOrFabricante,
+    preHandler: requireAdminOrLojista,
   }, async (req, reply) => {
     const { tenantId, role, storeIds } = req.jwtUser!;
 
@@ -76,8 +76,9 @@ export async function authRoutes(app: FastifyInstance) {
       orderBy: { createdAt: "asc" },
     });
 
-    const users = role === "fabricante"
+    const users = role === "lojista"
       ? allUsers.filter((u) =>
+          u.role === "vendedor" &&
           (u.storeIds as string[]).some((id) => storeIds.includes(id))
         )
       : allUsers;
@@ -87,13 +88,13 @@ export async function authRoutes(app: FastifyInstance) {
 
   // POST /api/auth/users ──────────────────────────────────────────────────────
   app.post("/api/auth/users", {
-    preHandler: requireAdminOrFabricante,
+    preHandler: requireAdminOrLojista,
   }, async (req, reply) => {
     const { tenantId, role } = req.jwtUser!;
     const body = req.body as { name?: string; email?: string; password?: string; role?: string; storeIds?: string[]; salesGoal?: number; crmUserId?: string };
 
-    if (role === "fabricante" && body.role !== "vendedor") {
-      return reply.code(403).send({ error: "Fabricante só pode criar vendedores." });
+    if (role === "lojista" && body.role !== "vendedor") {
+      return reply.code(403).send({ error: "Lojista só pode criar vendedores." });
     }
 
     if (!body.name || !body.email || !body.password || !body.role) {
@@ -127,7 +128,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // PUT /api/auth/users/:id ───────────────────────────────────────────────────
   app.put<{ Params: { id: string } }>("/api/auth/users/:id", {
-    preHandler: requireAdminOrFabricante,
+    preHandler: requireAdminOrLojista,
   }, async (req, reply) => {
     const { tenantId, role, storeIds } = req.jwtUser!;
     const { id } = req.params;
@@ -136,12 +137,12 @@ export async function authRoutes(app: FastifyInstance) {
     const existing = await prisma.user.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
 
-    if (role === "fabricante") {
+    if (role === "lojista") {
       if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
       const sharedStore = (existing.storeIds as string[]).some((s) => storeIds.includes(s));
       if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });
       if (body.role && body.role !== "vendedor") {
-        return reply.code(403).send({ error: "Fabricante só pode atribuir role vendedor." });
+        return reply.code(403).send({ error: "Lojista só pode atribuir role vendedor." });
       }
     }
 
@@ -169,7 +170,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // DELETE /api/auth/users/:id ────────────────────────────────────────────────
   app.delete<{ Params: { id: string } }>("/api/auth/users/:id", {
-    preHandler: requireAdminOrFabricante,
+    preHandler: requireAdminOrLojista,
   }, async (req, reply) => {
     const { tenantId, role, storeIds } = req.jwtUser!;
     const { id } = req.params;
@@ -177,7 +178,7 @@ export async function authRoutes(app: FastifyInstance) {
     const existing = await prisma.user.findFirst({ where: { id, tenantId } });
     if (!existing) return reply.code(404).send({ error: "Usuário não encontrado." });
 
-    if (role === "fabricante") {
+    if (role === "lojista") {
       if (existing.role !== "vendedor") return reply.code(403).send({ error: "Acesso negado." });
       const sharedStore = (existing.storeIds as string[]).some((s) => storeIds.includes(s));
       if (!sharedStore) return reply.code(403).send({ error: "Acesso negado." });

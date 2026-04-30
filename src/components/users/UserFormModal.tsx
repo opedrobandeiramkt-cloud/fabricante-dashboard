@@ -21,8 +21,11 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
   const [saving,   setSaving]   = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [errors,   setErrors]   = useState<Partial<Record<keyof UserFormData, string>>>({});
-  const { stores } = useStores();
-  const { isAdmin } = useAuth();
+  const { stores: allStores } = useStores();
+  const { isAdmin, isLojista, user: currentUser } = useAuth();
+  const stores = isLojista
+    ? allStores.filter((s) => currentUser?.storeIds.includes(s.id))
+    : allStores;
 
   const isNew = !user;
 
@@ -38,7 +41,11 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
         crmUserId: user.crmUserId ?? "",
       });
     } else {
-      setForm(EMPTY);
+      setForm({
+        ...EMPTY,
+        role:     isLojista ? "vendedor" : "fabricante",
+        storeIds: isLojista ? (currentUser?.storeIds ?? []) : [],
+      });
     }
     setErrors({});
   }, [user]);
@@ -147,20 +154,32 @@ export function UserFormModal({ user, onSave, onClose }: UserFormModalProps) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Perfil de acesso <span className="text-[hsl(var(--danger))]">*</span></label>
               <div className="grid grid-cols-2 gap-3">
-                <RoleOption
-                  selected={form.role === "fabricante"}
-                  onClick={() => set("role", "fabricante")}
-                  icon={<Store className="h-4 w-4" />}
-                  title="Fabricante"
-                  description="Vê apenas suas lojas"
-                  accent="success"
-                />
+                {!isLojista && (
+                  <RoleOption
+                    selected={form.role === "fabricante"}
+                    onClick={() => set("role", "fabricante")}
+                    icon={<Store className="h-4 w-4" />}
+                    title="Fabricante"
+                    description="Vê apenas suas lojas"
+                    accent="success"
+                  />
+                )}
+                {!isLojista && (
+                  <RoleOption
+                    selected={form.role === "lojista"}
+                    onClick={() => set("role", "lojista")}
+                    icon={<Store className="h-4 w-4" />}
+                    title="Lojista"
+                    description="Gerencia sua loja e vendedores"
+                    accent="success"
+                  />
+                )}
                 <RoleOption
                   selected={form.role === "vendedor"}
                   onClick={() => set("role", "vendedor")}
                   icon={<UserRound className="h-4 w-4" />}
                   title="Vendedor"
-                  description="Vê apenas suas métricas"
+                  description="Cria orçamentos e vê suas métricas"
                   accent="warning"
                 />
                 {isAdmin && (

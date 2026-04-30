@@ -11,6 +11,8 @@ interface AuthContextValue {
   login:           (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout:          () => void;
   isAdmin:         boolean;
+  isFabricante:    boolean;
+  isLojista:       boolean;
   isVendedor:      boolean;
   allowedStoreIds: string[];
 }
@@ -55,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const isAdmin         = user?.role === "admin";
+  const isFabricante    = user?.role === "fabricante";
+  const isLojista       = user?.role === "lojista";
   const isVendedor      = user?.role === "vendedor";
   const allowedStoreIds = user?.storeIds ?? [];
 
@@ -66,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         isAdmin,
+        isFabricante,
+        isLojista,
         isVendedor,
         allowedStoreIds,
       }}

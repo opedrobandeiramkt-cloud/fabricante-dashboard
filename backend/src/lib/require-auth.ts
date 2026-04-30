@@ -34,6 +34,18 @@ export async function requireAdminOrFabricante(
   }
 }
 
+export async function requireAdminOrLojista(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  await requireAuth(request, reply);
+  if (reply.sent) return;
+  const { role } = request.jwtUser!;
+  if (role !== "admin" && role !== "lojista") {
+    return void reply.code(403).send({ error: "Acesso negado." });
+  }
+}
+
 export async function requireAdmin(
   request: FastifyRequest,
   reply: FastifyReply

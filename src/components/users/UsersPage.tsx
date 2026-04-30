@@ -16,7 +16,14 @@ export function UsersPage() {
   const [modalUser,    setModalUser]    = useState<AppUser | null | "new">(null);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
 
-  const filtered = users.filter((u) =>
+  const isLojista = currentUser?.role === "lojista";
+
+  // Lojista vê apenas vendedores vinculados às suas lojas
+  const visibleUsers = isLojista
+    ? users.filter((u) => u.role === "vendedor" && u.storeIds.some((id) => currentUser?.storeIds.includes(id)))
+    : users;
+
+  const filtered = visibleUsers.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
@@ -33,9 +40,10 @@ export function UsersPage() {
     }
   }
 
-  const adminCount     = users.filter((u) => u.role === "admin").length;
-  const fabricanteCount = users.filter((u) => u.role === "fabricante").length;
-  const vendedorCount  = users.filter((u) => u.role === "vendedor").length;
+  const adminCount      = visibleUsers.filter((u) => u.role === "admin").length;
+  const fabricanteCount = visibleUsers.filter((u) => u.role === "fabricante").length;
+  const lojistasCount   = visibleUsers.filter((u) => u.role === "lojista").length;
+  const vendedorCount   = visibleUsers.filter((u) => u.role === "vendedor").length;
 
   return (
     <div className="space-y-6">
@@ -45,13 +53,11 @@ export function UsersPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Gerenciar Usuários</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {users.length} usuário{users.length !== 1 ? "s" : ""}
-            {" · "}
-            <span className="text-primary">{adminCount} admin</span>
-            {" · "}
-            <span className="text-[hsl(var(--success))]">{fabricanteCount} fabricante{fabricanteCount !== 1 ? "s" : ""}</span>
-            {" · "}
-            <span className="text-[hsl(var(--warning))]">{vendedorCount} vendedor{vendedorCount !== 1 ? "es" : ""}</span>
+            {visibleUsers.length} usuário{visibleUsers.length !== 1 ? "s" : ""}
+            {adminCount > 0 && <>{" · "}<span className="text-primary">{adminCount} admin</span></>}
+            {fabricanteCount > 0 && <>{" · "}<span className="text-[hsl(var(--success))]">{fabricanteCount} fabricante{fabricanteCount !== 1 ? "s" : ""}</span></>}
+            {lojistasCount > 0 && <>{" · "}<span className="text-[hsl(var(--success))]">{lojistasCount} lojista{lojistasCount !== 1 ? "s" : ""}</span></>}
+            {vendedorCount > 0 && <>{" · "}<span className="text-[hsl(var(--warning))]">{vendedorCount} vendedor{vendedorCount !== 1 ? "es" : ""}</span></>}
           </p>
         </div>
         <button
@@ -126,6 +132,10 @@ export function UsersPage() {
                     ) : u.role === "vendedor" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))]">
                         <UserRound className="h-3 w-3" /> Vendedor
+                      </span>
+                    ) : u.role === "lojista" ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">
+                        <Store className="h-3 w-3" /> Lojista
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">

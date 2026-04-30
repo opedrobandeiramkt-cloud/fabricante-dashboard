@@ -119,6 +119,7 @@ model LeadEvent {
 enum UserRole {
   admin
   fabricante
+  lojista
   vendedor
 }
 

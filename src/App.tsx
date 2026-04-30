@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
-import { BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users, Download, Menu, X, FileText } from "lucide-react";
+import {
+  BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
+  Download, Menu, X, FileText, TrendingUp,
+} from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
 import { KPICards }            from "@/components/dashboard/KPICards";
@@ -31,7 +34,6 @@ type DashboardTab = "metricas" | "orcamentos";
 export default function App() {
   const { isAuthenticated } = useAuth();
 
-  // Detecta link de reset de senha na URL: ?reset=TOKEN
   const resetToken = new URLSearchParams(window.location.search).get("reset");
   if (resetToken) {
     function clearTokenAndGoLogin() {
@@ -45,13 +47,12 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  const { user, isAdmin, isVendedor, allowedStoreIds, logout } = useAuth();
+  const { user, isAdmin, isFabricante, isLojista, isVendedor, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
   const { reloadUsers } = useUsersContext();
 
-  // Carrega usuários da API quando admin ou fabricante faz login
   useEffect(() => {
-    if ((user?.role === "admin" || user?.role === "fabricante") && user.id) {
+    if ((isAdmin || isLojista) && user?.id) {
       reloadUsers(user.id);
     }
   }, [user?.id]);
@@ -59,7 +60,7 @@ function AuthenticatedApp() {
   const [page,           setPage]           = useState<Page>("dashboard");
   const [dashboardTab,   setDashboardTab]   = useState<DashboardTab>("metricas");
   const [userMenuOpen,   setUserMenuOpen]   = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [selectedStores, setSelectedStores] = useState<string[]>(() =>
     isAdmin ? [] : allowedStoreIds
   );
@@ -75,16 +76,14 @@ function AuthenticatedApp() {
 
   function handlePageChange(p: Page) {
     setPage(p);
-    setMobileMenuOpen(false);
+    setSidebarOpen(false);
   }
 
-  // IDs das lojas ativas — usado para filtrar a API (exclui lojas inativas/excluídas)
   const activeStoreIds = useMemo(
     () => stores.filter((s) => s.active !== false).map((s) => s.id),
     [stores]
   );
 
-  // Quando "todas as lojas" está selecionado (array vazio), passa apenas as ativas
   const effectiveStoreIds = useMemo(
     () => selectedStores.length > 0 ? selectedStores : activeStoreIds,
     [selectedStores, activeStoreIds]
@@ -100,10 +99,8 @@ function AuthenticatedApp() {
   );
 
   const { wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
-
   const { kpis: rawKpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
 
-  // Adiciona receita de orçamentos ganhos ao faturamento total
   const orcamentosRevenue = wonRevenueForPeriod({ storeIds: effectiveStoreIds, period });
   const orcamentosAllCount = wonCountForPeriod({ storeIds: effectiveStoreIds, period });
   const orcamentosVendedorRevenue = isVendedor && user?.id
@@ -119,12 +116,10 @@ function AuthenticatedApp() {
     wonDeals: rawKpis.wonDeals + (isVendedor ? orcamentosVendedorCount : orcamentosAllCount),
   }), [rawKpis, orcamentosRevenue, orcamentosAllCount, orcamentosVendedorCount, isVendedor]);
 
-  // Mostra apenas lojas ativas; aplica nome/cidade local quando disponível
   const storeMap = new Map(stores.map((s) => [s.id, s]));
   const filteredRanking = ranking
     .filter((r) => {
       const local = storeMap.get(r.store.id);
-      // Se loja existe localmente, respeita o status active; se não existe, exibe mesmo assim
       return local ? local.active !== false : true;
     })
     .map((r) => {
@@ -138,158 +133,107 @@ function AuthenticatedApp() {
     : stores.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
 
   function handleExportPDF() {
-    exportDashboardPDF({
-      period: PERIOD_LABELS[period],
-      storeLabel,
-      kpis,
-      funnel,
-      ranking,
-      trend,
-      alerts: [],
-    });
+    exportDashboardPDF({ period: PERIOD_LABELS[period], storeLabel, kpis, funnel, ranking, trend, alerts: [] });
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/60 backdrop-blur-lg sticky top-0 z-40">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
+  const pageTitle =
+    page === "dashboard" ? "Dashboard" :
+    page === "stores"    ? "Lojas"     : "Usuários";
 
-          {/* Logo */}
-          <button onClick={() => handlePageChange("dashboard")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-lg bg-[#1a1510] border border-[#f0d488]/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={logoSvg} alt="Logo" className="h-7 w-7 object-contain" />
-            </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-bold tracking-tight leading-none">Inteligência Comercial</h1>
-              <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">iGUi Piscinas</p>
-            </div>
+  const roleLabel = isAdmin ? "Administrador" : isVendedor ? "Vendedor" : isLojista ? "Lojista" : isFabricante ? "Fabricante" : "Fabricante";
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+
+      {/* ─── Sidebar ─────────────────────────────────────────────────── */}
+      <>
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col border-r border-border bg-card/30 backdrop-blur-xl">
+          <SidebarContents
+            page={page}
+            onPageChange={handlePageChange}
+            isAdmin={isAdmin}
+            isLojista={isLojista}
+            isVendedor={isVendedor}
+            user={user}
+            roleLabel={roleLabel}
+            userMenuOpen={userMenuOpen}
+            setUserMenuOpen={setUserMenuOpen}
+            logout={logout}
+            allowedStoreIds={allowedStoreIds}
+          />
+        </aside>
+
+        {/* Mobile sidebar drawer */}
+        {sidebarOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <aside className="fixed inset-y-0 left-0 z-50 w-[220px] flex flex-col border-r border-border bg-card md:hidden">
+              <SidebarContents
+                page={page}
+                onPageChange={handlePageChange}
+                isAdmin={isAdmin}
+                isLojista={isLojista}
+                isVendedor={isVendedor}
+                user={user}
+                roleLabel={roleLabel}
+                userMenuOpen={userMenuOpen}
+                setUserMenuOpen={setUserMenuOpen}
+                logout={logout}
+                allowedStoreIds={allowedStoreIds}
+              />
+            </aside>
+          </>
+        )}
+      </>
+
+      {/* ─── Main area ───────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        {/* Topbar */}
+        <header className="flex-shrink-0 h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card/30 backdrop-blur-sm">
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex-shrink-0"
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            <Menu className="h-4 w-4" />
           </button>
 
-          {/* Nav — desktop only */}
-          <nav className="hidden md:flex items-center gap-1">
-            <NavTab active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
-              icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
-            />
-            {!isVendedor && (
-              <NavTab active={page === "stores"} onClick={() => handlePageChange("stores")}
-                icon={<Store className="h-4 w-4" />} label="Lojas" />
+          {/* Page title */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
+            {page === "dashboard" && !isVendedor && (
+              <p className="text-[10px] text-muted-foreground hidden sm:block">
+                {PERIOD_LABELS[period]} · {selectedStores.length === 0 ? "Todas as lojas" : `${selectedStores.length} loja${selectedStores.length !== 1 ? "s" : ""}`}
+              </p>
             )}
-            {(isAdmin || (!isVendedor && user?.role === "fabricante")) && (
-              <NavTab active={page === "users"} onClick={() => handlePageChange("users")}
-                icon={<Users className="h-4 w-4" />} label="Usuários" />
-            )}
-          </nav>
-
-          {/* Direita */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Filtros desktop — apenas no dashboard > aba métricas e não para vendedor */}
-            {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
-              <>
-                <div className="hidden md:block">
-                  <StoreFilter
-                    selected={selectedStores}
-                    onChange={handleStoreChange}
-                    restrictToIds={isAdmin ? undefined : allowedStoreIds}
-                  />
-                </div>
-                <div className="hidden md:flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border">
-                  {PERIODS.map((p) => (
-                    <button key={p} onClick={() => setPeriod(p)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                        period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                      }`}>
-                      {PERIOD_LABELS[p]}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={handleExportPDF}
-                  title="Exportar relatório PDF"
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden lg:inline">Exportar PDF</span>
-                </button>
-              </>
-            )}
-
-            {/* Menu do usuário */}
-            <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-border bg-secondary/50 hover:bg-secondary transition-colors"
-              >
-                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                  isAdmin ? "bg-primary text-primary-foreground" : "bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))]"
-                }`}>
-                  {user?.avatarInitials}
-                </div>
-                <span className="text-xs font-medium text-foreground hidden sm:block max-w-[100px] truncate">
-                  {user?.name}
-                </span>
-                {isAdmin && <ShieldCheck className="h-3.5 w-3.5 text-primary hidden sm:block" />}
-                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border">
-                    <p className="text-sm font-semibold text-foreground">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                    <span className={`inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      isAdmin ? "bg-primary/15 text-primary" :
-                      isVendedor ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" :
-                      "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]"
-                    }`}>
-                      {isAdmin ? <><ShieldCheck className="h-2.5 w-2.5" /> Administrador</> : isVendedor ? "Vendedor" : "Fabricante"}
-                    </span>
-                  </div>
-                  {!isAdmin && (
-                    <div className="px-4 py-2 border-b border-border">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Suas lojas</p>
-                      <p className="text-xs text-foreground">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""} na sua jurisdição</p>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => { setUserMenuOpen(false); logout(); }}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-[hsl(var(--danger))] hover:bg-[hsl(var(--danger)/0.06)] transition-colors"
-                  >
-                    <LogOut className="h-4 w-4" /> Sair
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Botão menu mobile */}
-            <button
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              className="md:hidden h-9 w-9 rounded-lg border border-border bg-secondary/50 hover:bg-secondary flex items-center justify-center text-muted-foreground transition-colors"
-            >
-              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
           </div>
-        </div>
 
-        {/* Barra de filtros mobile — apenas no dashboard > aba métricas e não para vendedor */}
-        {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
-          <div className="md:hidden border-t border-border flex flex-col">
-            {/* Linha 1: StoreFilter — sem overflow para o dropdown funcionar */}
-            <div className="px-4 pt-2 pb-1">
-              <StoreFilter
-                selected={selectedStores}
-                onChange={handleStoreChange}
-                restrictToIds={isAdmin ? undefined : allowedStoreIds}
-              />
-            </div>
-            {/* Linha 2: período + PDF — pode ter scroll horizontal */}
-            <div className="px-4 pb-2 flex items-center gap-2 overflow-x-auto">
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border flex-shrink-0">
+          {/* Controls — só no dashboard > métricas e não vendedor */}
+          {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
+            <div className="flex items-center gap-2">
+              <div className="hidden lg:block">
+                <StoreFilter
+                  selected={selectedStores}
+                  onChange={handleStoreChange}
+                  restrictToIds={isAdmin ? undefined : allowedStoreIds}
+                />
+              </div>
+              <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/80 border border-border">
                 {PERIODS.map((p) => (
-                  <button key={p} onClick={() => setPeriod(p)}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                      period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                    }`}>
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      period === p
+                        ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
                     {PERIOD_LABELS[p]}
                   </button>
                 ))}
@@ -297,157 +241,269 @@ function AuthenticatedApp() {
               <button
                 onClick={handleExportPDF}
                 title="Exportar PDF"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                className="hidden sm:flex h-8 items-center gap-1.5 px-3 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Download className="h-3.5 w-3.5" />
-                PDF
+                <span className="hidden lg:inline">PDF</span>
               </button>
             </div>
+          )}
+        </header>
+
+        {/* Mobile filters strip */}
+        {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
+          <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-border bg-card/20 overflow-x-auto">
+            <StoreFilter
+              selected={selectedStores}
+              onChange={handleStoreChange}
+              restrictToIds={isAdmin ? undefined : allowedStoreIds}
+            />
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/80 border border-border flex-shrink-0">
+              {PERIODS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
+                    period === p
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {PERIOD_LABELS[p]}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleExportPDF}
+              className="flex-shrink-0 flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-secondary/50 text-muted-foreground"
+            >
+              <Download className="h-3.5 w-3.5" /> PDF
+            </button>
           </div>
         )}
 
-        {/* Menu mobile expandido */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-card">
-            <nav className="flex flex-col p-2 gap-1">
-              <MobileNavItem active={page === "dashboard"} onClick={() => handlePageChange("dashboard")}
-                icon={<BarChart3 className="h-4 w-4" />} label="Dashboard"
-              />
-              {!isVendedor && (
-                <MobileNavItem active={page === "stores"} onClick={() => handlePageChange("stores")}
-                  icon={<Store className="h-4 w-4" />} label="Lojas"
-                />
-              )}
-              {(isAdmin || (!isVendedor && user?.role === "fabricante")) && (
-                <MobileNavItem active={page === "users"} onClick={() => handlePageChange("users")}
-                  icon={<Users className="h-4 w-4" />} label="Usuários"
-                />
-              )}
-            </nav>
-          </div>
-        )}
-      </header>
+        {/* Barra de meta do vendedor */}
+        {isVendedor && goalData && <SalesGoalProgress goalData={goalData} />}
 
-      {/* Barra de meta do vendedor — logo abaixo do header */}
-      {isVendedor && goalData && <SalesGoalProgress goalData={goalData} />}
-
-      {/* Conteúdo */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {page === "dashboard" ? (
-          <div className="space-y-4 sm:space-y-6">
-            {/* Sub-abas do dashboard */}
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border w-fit">
-              <button
-                onClick={() => setDashboardTab("metricas")}
-                className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  dashboardTab === "metricas"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <BarChart3 className="h-3.5 w-3.5" />
-                Métricas
-              </button>
-              <button
-                onClick={() => setDashboardTab("orcamentos")}
-                className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  dashboardTab === "orcamentos"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                Orçamentos
-              </button>
-            </div>
-
-            {dashboardTab === "metricas" ? (
-              isVendedor ? (
-                <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
-              ) : (
-                <div className="space-y-4 sm:space-y-6">
-                  {!isAdmin && (
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[hsl(var(--primary)/0.06)] border border-[hsl(var(--primary)/0.2)] text-sm">
-                      <Store className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="text-muted-foreground">
-                        Visualizando dados de{" "}
-                        <span className="text-foreground font-medium">{allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}</span>{" "}
-                        sob sua responsabilidade.
-                      </span>
-                    </div>
-                  )}
-                  <KPICards data={kpis} />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <FunnelChart data={funnel} />
-                    <TrendChart  data={trend}  />
-                  </div>
-                  <StageTimeChart data={stageTimes} />
-                  <StoreRanking   data={filteredRanking} />
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6">
+            {page === "dashboard" ? (
+              <div className="space-y-6">
+                {/* Sub-abas */}
+                <div className="flex items-center gap-0 border-b border-border">
+                  <DashTab
+                    active={dashboardTab === "metricas"}
+                    onClick={() => setDashboardTab("metricas")}
+                    icon={<TrendingUp className="h-3.5 w-3.5" />}
+                    label="Métricas"
+                  />
+                  <DashTab
+                    active={dashboardTab === "orcamentos"}
+                    onClick={() => setDashboardTab("orcamentos")}
+                    icon={<FileText className="h-3.5 w-3.5" />}
+                    label="Orçamentos"
+                  />
                 </div>
-              )
+
+                {dashboardTab === "metricas" ? (
+                  isVendedor ? (
+                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
+                  ) : (
+                    <div className="space-y-5">
+                      {!isAdmin && (
+                        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm">
+                          <Store className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-muted-foreground">
+                            Visualizando{" "}
+                            <span className="text-foreground font-semibold">
+                              {allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}
+                            </span>{" "}
+                            sob sua responsabilidade
+                          </span>
+                        </div>
+                      )}
+                      <KPICards data={kpis} />
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <FunnelChart data={funnel} />
+                        <TrendChart  data={trend}  />
+                      </div>
+                      <StageTimeChart data={stageTimes} />
+                      <StoreRanking   data={filteredRanking} />
+                    </div>
+                  )
+                ) : (
+                  <OrcamentosPage />
+                )}
+              </div>
+            ) : page === "stores" ? (
+              <StoresPage readOnly={!isAdmin} />
             ) : (
-              <OrcamentosPage />
+              <UsersPage />
             )}
           </div>
-        ) : page === "stores" ? (
-          <StoresPage readOnly={!isAdmin} />
-        ) : (
-          <UsersPage />
-        )}
-      </main>
+        </main>
+      </div>
 
-      {/* Overlay para fechar menus */}
-      {(userMenuOpen || mobileMenuOpen) && (
-        <div className="fixed inset-0 z-30" onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); }} />
+      {/* Overlay fecha menus */}
+      {userMenuOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
       )}
     </div>
   );
 }
 
-function NavTab({ active, onClick, icon, label, badge }: {
+/* ─── Sidebar contents ─────────────────────────────────────────────────────── */
+function SidebarContents({
+  page, onPageChange, isAdmin, isLojista, isVendedor, user, roleLabel,
+  userMenuOpen, setUserMenuOpen, logout, allowedStoreIds,
+}: {
+  page: Page;
+  onPageChange: (p: Page) => void;
+  isAdmin: boolean;
+  isLojista: boolean;
+  isVendedor: boolean;
+  user: { name: string; email: string; avatarInitials: string; role: string } | null;
+  roleLabel: string;
+  userMenuOpen: boolean;
+  setUserMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+  logout: () => void;
+  allowedStoreIds: string[];
+}) {
+  return (
+    <>
+      {/* Logo */}
+      <div className="h-14 flex items-center gap-3 px-4 border-b border-border flex-shrink-0">
+        <div className="h-8 w-8 rounded-lg bg-[#1a1510] border border-[#f0d488]/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src={logoSvg} alt="Logo" className="h-6 w-6 object-contain" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold leading-none text-foreground">iGUi Piscinas</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">Inteligência Comercial</p>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-3 space-y-0.5">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60 px-3 pt-2 pb-1.5">
+          Navegação
+        </p>
+        <SidebarNavItem
+          active={page === "dashboard"}
+          onClick={() => onPageChange("dashboard")}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Dashboard"
+        />
+        {!isVendedor && (
+          <SidebarNavItem
+            active={page === "stores"}
+            onClick={() => onPageChange("stores")}
+            icon={<Store className="h-4 w-4" />}
+            label="Lojas"
+          />
+        )}
+        {(isAdmin || isLojista) && (
+          <SidebarNavItem
+            active={page === "users"}
+            onClick={() => onPageChange("users")}
+            icon={<Users className="h-4 w-4" />}
+            label="Usuários"
+          />
+        )}
+      </nav>
+
+      {/* User section */}
+      <div className="p-3 border-t border-border">
+        <button
+          onClick={() => setUserMenuOpen((v) => !v)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-secondary/70 transition-colors text-left"
+        >
+          <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+            isAdmin ? "bg-primary text-primary-foreground" : "bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))]"
+          }`}>
+            {user?.avatarInitials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{roleLabel}</p>
+          </div>
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        {userMenuOpen && (
+          <div className="mt-1 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-border">
+              <p className="text-xs font-semibold text-foreground">{user?.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+              <div className="flex items-center gap-1 mt-1.5">
+                {isAdmin && <ShieldCheck className="h-3 w-3 text-primary" />}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  isAdmin   ? "bg-primary/10 text-primary" :
+                  isVendedor ? "bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]" :
+                              "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]"
+                }`}>
+                  {roleLabel}
+                </span>
+              </div>
+              {!isAdmin && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => { setUserMenuOpen(false); logout(); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-[hsl(var(--danger))] hover:bg-[hsl(var(--danger)/0.06)] transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Sair
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ─── Sidebar nav item ─────────────────────────────────────────────────────── */
+function SidebarNavItem({ active, onClick, icon, label }: {
   active:  boolean;
   onClick: () => void;
   icon:    React.ReactNode;
   label:   string;
-  badge?:  number;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+        active
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
       }`}
     >
-      {icon}{label}
-      {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[hsl(var(--danger))] text-white text-[9px] font-bold flex items-center justify-center">
-          {badge}
-        </span>
-      )}
+      <span className={active ? "text-primary" : ""}>{icon}</span>
+      {label}
+      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />}
     </button>
   );
 }
 
-function MobileNavItem({ active, onClick, icon, label, badge }: {
+/* ─── Dashboard sub-tab ────────────────────────────────────────────────────── */
+function DashTab({ active, onClick, icon, label }: {
   active:  boolean;
   onClick: () => void;
   icon:    React.ReactNode;
   label:   string;
-  badge?:  number;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors w-full text-left ${
-        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      {icon}{label}
-      {badge !== undefined && badge > 0 && (
-        <span className="ml-auto h-5 w-5 rounded-full bg-[hsl(var(--danger))] text-white text-[9px] font-bold flex items-center justify-center">
-          {badge}
-        </span>
-      )}
+      {icon}
+      {label}
+      {active && <span className="absolute bottom-0 inset-x-0 h-[2px] bg-primary rounded-t-full" />}
     </button>
   );
 }
