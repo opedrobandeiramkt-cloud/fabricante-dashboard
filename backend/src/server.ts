@@ -5,9 +5,11 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { ingestRoutes } from "./routes/ingest.js";
+import { ingestCrmProxyRoutes } from "./routes/ingest-crm-proxy.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { authRoutes } from "./routes/auth.js";
 import { storeRoutes } from "./routes/stores.js";
+import { crmConfigRoutes } from "./routes/crm-config.js";
 import { quoteRoutes } from "./routes/quotes.js";
 
 const port = Number(process.env.PORT ?? 3333);
@@ -55,9 +57,11 @@ try {
   });
 
   await app.register(ingestRoutes);
+  await app.register(ingestCrmProxyRoutes);
   await app.register(dashboardRoutes);
   await app.register(authRoutes);
   await app.register(storeRoutes);
+  await app.register(crmConfigRoutes);
   await app.register(quoteRoutes);
 
   app.get("/health", async () => ({ ok: true, uptime: process.uptime() }));
