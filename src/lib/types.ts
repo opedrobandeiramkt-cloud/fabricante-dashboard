@@ -138,7 +138,7 @@ export interface Orcamento {
 
 // ─── Trackeamento / Leads ─────────────────────────────────────────────────────
 
-export type LeadOrigem = "meta" | "google" | "instagram" | "organico";
+export type LeadOrigem = "meta" | "google" | "instagram" | "organico" | "indicacao" | "evento";
 
 export interface LeadRow {
   id:              string;

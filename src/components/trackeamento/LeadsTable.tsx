@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Check, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Pencil, Users, CalendarDays } from "lucide-react";
 import { FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
 import { api } from "@/lib/api";
 import type { LeadRow, LeadOrigem } from "@/lib/types";
@@ -7,13 +7,15 @@ import type { LeadRow, LeadOrigem } from "@/lib/types";
 // ─── Origem config ────────────────────────────────────────────────────────────
 
 const ORIGEM_CONFIG: Record<LeadOrigem, { label: string; icon: React.ReactNode; className: string }> = {
-  meta:      { label: "Meta Ads",  icon: <FaFacebook  className="h-3 w-3" />, className: "bg-blue-500/10 text-blue-400 border-blue-500/20"   },
-  google:    { label: "Google",    icon: <FaGoogle    className="h-3 w-3" />, className: "bg-red-500/10 text-red-400 border-red-500/20"       },
-  instagram: { label: "Instagram", icon: <FaInstagram className="h-3 w-3" />, className: "bg-pink-500/10 text-pink-400 border-pink-500/20"    },
-  organico:  { label: "Orgânico",  icon: null,                                className: "bg-secondary text-muted-foreground border-border"    },
+  meta:      { label: "Meta Ads",   icon: <FaFacebook   className="h-3 w-3" />,             className: "bg-blue-500/10 text-blue-400 border-blue-500/20"    },
+  google:    { label: "Google",     icon: <FaGoogle     className="h-3 w-3" />,             className: "bg-red-500/10 text-red-400 border-red-500/20"        },
+  instagram: { label: "Instagram",  icon: <FaInstagram  className="h-3 w-3" />,             className: "bg-pink-500/10 text-pink-400 border-pink-500/20"     },
+  indicacao: { label: "Indicação",  icon: <Users        className="h-3 w-3" />,             className: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  evento:    { label: "Evento",     icon: <CalendarDays className="h-3 w-3" />,             className: "bg-amber-500/10 text-amber-400 border-amber-500/20"  },
+  organico:  { label: "Orgânico",   icon: null,                                              className: "bg-secondary text-muted-foreground border-border"    },
 };
 
-const ORIGENS: LeadOrigem[] = ["meta", "google", "instagram", "organico"];
+const ORIGENS: LeadOrigem[] = ["meta", "google", "instagram", "indicacao", "evento", "organico"];
 
 // ─── Origem badge editável ────────────────────────────────────────────────────
 

@@ -538,7 +538,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         prisma.lead.count({ where }),
       ]);
 
-      const VALID_ORIGINS = new Set(["meta", "google", "instagram", "organico"]);
+      const VALID_ORIGINS = new Set(["meta", "google", "instagram", "organico", "indicacao", "evento"]);
 
       const data = leads.map((lead) => {
         const manual = lead.origemManual && VALID_ORIGINS.has(lead.origemManual)
@@ -575,7 +575,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const { origem } = request.body as { origem: string | null };
 
-      const valid = new Set(["meta", "google", "instagram", "organico"]);
+      const valid = new Set(["meta", "google", "instagram", "organico", "indicacao", "evento"]);
       if (origem !== null && !valid.has(origem)) {
         return reply.code(400).send({ error: "Origem inválida. Use: meta, google, instagram, organico ou null." });
       }
