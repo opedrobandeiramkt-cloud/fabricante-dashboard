@@ -1,14 +1,20 @@
 import { Users } from "lucide-react";
 import { LeadsTable } from "./LeadsTable";
 import { useLeads } from "@/hooks/useLeads";
-import type { DashboardFilters } from "@/lib/types";
+import type { DashboardFilters, LeadOrigem, LeadRow } from "@/lib/types";
 
 interface Props {
   filters: DashboardFilters;
 }
 
 export function TrackeamentoPage({ filters }: Props) {
-  const { leads, total, totalPages, page, setPage, loading } = useLeads(filters);
+  const { leads, total, totalPages, page, setPage, loading, updateLead } = useLeads(filters);
+
+  function handleLeadUpdate(id: string, patch: Partial<LeadRow>) {
+    if ("origemManual" in patch) {
+      updateLead(id, patch.origemManual as LeadOrigem | null);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -31,6 +37,7 @@ export function TrackeamentoPage({ filters }: Props) {
         totalPages={totalPages}
         page={page}
         onPage={setPage}
+        onLeadUpdate={handleLeadUpdate}
       />
     </div>
   );

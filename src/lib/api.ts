@@ -67,6 +67,13 @@ export const api = {
     return apiFetch(`/api/dashboard/leads?${params}&page=${page}`);
   },
 
+  updateLeadOrigem(id: string, origem: string | null): Promise<{ ok: boolean }> {
+    return apiFetch(`/api/dashboard/leads/${id}/origem`, {
+      method: "PATCH",
+      body:   JSON.stringify({ origem }),
+    });
+  },
+
   goal(storeId: string, salesperson: string): Promise<GoalData> {
     const params = new URLSearchParams({ salesperson });
     if (storeId) params.set("storeId", storeId);

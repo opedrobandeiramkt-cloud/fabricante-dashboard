@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
-import type { DashboardFilters, LeadRow } from "@/lib/types";
+import type { DashboardFilters, LeadOrigem, LeadRow } from "@/lib/types";
 
 const USE_API = import.meta.env.VITE_USE_API === "true";
 
@@ -18,7 +18,6 @@ export function useLeads(filters: DashboardFilters) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Reset to page 1 when filters change
   useEffect(() => { setPage(1); }, [filters.storeIds.join(","), filters.period]);
 
   useEffect(() => {
@@ -41,5 +40,12 @@ export function useLeads(filters: DashboardFilters) {
       .finally(() => { if (mountedRef.current) setLoading(false); });
   }, [filters.storeIds.join(","), filters.period, page]);
 
-  return { leads, total, totalPages, page, setPage, loading, error };
+  const updateLead = useCallback((id: string, origemManual: LeadOrigem | null) => {
+    setLeads((prev) => prev.map((l) => {
+      if (l.id !== id) return l;
+      return { ...l, origemManual, origem: origemManual ?? l.origem };
+    }));
+  }, []);
+
+  return { leads, total, totalPages, page, setPage, loading, error, updateLead };
 }

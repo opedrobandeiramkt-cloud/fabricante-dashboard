@@ -538,24 +538,57 @@ export async function dashboardRoutes(app: FastifyInstance) {
         prisma.lead.count({ where }),
       ]);
 
-      const data = leads.map((lead) => ({
-        id:              lead.id,
-        contactName:     lead.contactName,
-        contactPhone:    lead.contactPhone,
-        origem:          deriveOrigem(lead.utmSource, lead.utmMedium),
-        utmSource:       lead.utmSource,
-        utmMedium:       lead.utmMedium,
-        utmCampaign:     lead.utmCampaign,
-        utmContent:      lead.utmContent,
-        stageLabel:      lead.currentStage?.label ?? null,
-        stageKey:        lead.currentStage?.key   ?? null,
-        revenue:         lead.revenue,
-        salespersonName: lead.salespersonName ?? lead.salespersonCrmId ?? null,
-        storeName:       lead.store.name,
-        enteredAt:       lead.enteredAt.toISOString(),
-      }));
+      const VALID_ORIGINS = new Set(["meta", "google", "instagram", "organico"]);
+
+      const data = leads.map((lead) => {
+        const manual = lead.origemManual && VALID_ORIGINS.has(lead.origemManual)
+          ? (lead.origemManual as "meta" | "google" | "instagram" | "organico")
+          : null;
+        return {
+          id:              lead.id,
+          contactName:     lead.contactName,
+          contactPhone:    lead.contactPhone,
+          origem:          manual ?? deriveOrigem(lead.utmSource, lead.utmMedium),
+          origemManual:    manual,
+          utmSource:       lead.utmSource,
+          utmMedium:       lead.utmMedium,
+          utmCampaign:     lead.utmCampaign,
+          utmContent:      lead.utmContent,
+          stageLabel:      lead.currentStage?.label ?? null,
+          stageKey:        lead.currentStage?.key   ?? null,
+          revenue:         lead.revenue,
+          salespersonName: lead.salespersonName ?? lead.salespersonCrmId ?? null,
+          storeName:       lead.store.name,
+          enteredAt:       lead.enteredAt.toISOString(),
+        };
+      });
 
       return reply.send({ data, total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
+    }
+  );
+
+  // ── PATCH /api/dashboard/leads/:id/origem ────────────────────────────────────
+  app.patch<{ Params: { id: string }; Body: { origem: string | null } }>(
+    "/api/dashboard/leads/:id/origem",
+    async (request, reply) => {
+      const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+      const { id } = request.params;
+      const { origem } = request.body as { origem: string | null };
+
+      const valid = new Set(["meta", "google", "instagram", "organico"]);
+      if (origem !== null && !valid.has(origem)) {
+        return reply.code(400).send({ error: "Origem inválida. Use: meta, google, instagram, organico ou null." });
+      }
+
+      const lead = await prisma.lead.findFirst({ where: { id, tenantId: tenant.id } });
+      if (!lead) return reply.code(404).send({ error: "Lead não encontrado." });
+
+      await prisma.lead.update({
+        where: { id },
+        data:  { origemManual: origem },
+      });
+
+      return reply.send({ ok: true, origemManual: origem });
     }
   );
 

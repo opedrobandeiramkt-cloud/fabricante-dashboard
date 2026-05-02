@@ -83,6 +83,7 @@ model Lead {
   contactName          String?   @map("contact_name")
   contactPhone         String?   @map("contact_phone")
   salespersonName      String?   @map("salesperson_name")
+  origemManual         String?   @map("origem_manual") // override manual: "meta"|"google"|"instagram"|"organico"
   utmSource            String?   @map("utm_source")
   utmMedium            String?   @map("utm_medium")
   utmCampaign          String?   @map("utm_campaign")

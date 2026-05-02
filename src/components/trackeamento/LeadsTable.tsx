@@ -1,8 +1,10 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Check, Pencil } from "lucide-react";
 import { FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
+import { api } from "@/lib/api";
 import type { LeadRow, LeadOrigem } from "@/lib/types";
 
-// ─── Origem badge ─────────────────────────────────────────────────────────────
+// ─── Origem config ────────────────────────────────────────────────────────────
 
 const ORIGEM_CONFIG: Record<LeadOrigem, { label: string; icon: React.ReactNode; className: string }> = {
   meta:      { label: "Meta Ads",  icon: <FaFacebook  className="h-3 w-3" />, className: "bg-blue-500/10 text-blue-400 border-blue-500/20"   },
@@ -11,13 +13,86 @@ const ORIGEM_CONFIG: Record<LeadOrigem, { label: string; icon: React.ReactNode; 
   organico:  { label: "Orgânico",  icon: null,                                className: "bg-secondary text-muted-foreground border-border"    },
 };
 
-function OrigemBadge({ origem }: { origem: LeadOrigem }) {
-  const cfg = ORIGEM_CONFIG[origem];
+const ORIGENS: LeadOrigem[] = ["meta", "google", "instagram", "organico"];
+
+// ─── Origem badge editável ────────────────────────────────────────────────────
+
+function OrigemCell({ lead, onUpdate }: { lead: LeadRow; onUpdate: (id: string, origem: LeadOrigem | null) => void }) {
+  const [open,   setOpen]   = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  async function handleSelect(origem: LeadOrigem | null) {
+    setOpen(false);
+    setSaving(true);
+    try {
+      await api.updateLeadOrigem(lead.id, origem);
+      onUpdate(lead.id, origem);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const cfg = ORIGEM_CONFIG[lead.origem];
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${cfg.className}`}>
-      {cfg.icon}
-      {cfg.label}
-    </span>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={saving}
+        className={`group inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-opacity ${cfg.className} ${saving ? "opacity-50" : "hover:opacity-80"}`}
+      >
+        {cfg.icon}
+        {cfg.label}
+        {lead.origemManual && <span className="text-[9px] opacity-60">✎</span>}
+        {!saving && <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 ml-0.5 flex-shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-border">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Definir origem</p>
+          </div>
+          {ORIGENS.map((o) => {
+            const c = ORIGEM_CONFIG[o];
+            const isActive = lead.origemManual === o || (!lead.origemManual && lead.origem === o);
+            return (
+              <button
+                key={o}
+                onClick={() => handleSelect(o)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-secondary/60 transition-colors"
+              >
+                <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] border ${c.className}`}>
+                  {c.icon ?? <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                </span>
+                <span className="flex-1 text-left text-foreground text-xs">{c.label}</span>
+                {isActive && <Check className="h-3 w-3 text-primary flex-shrink-0" />}
+              </button>
+            );
+          })}
+          {lead.origemManual && (
+            <>
+              <div className="border-t border-border" />
+              <button
+                onClick={() => handleSelect(null)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+              >
+                Auto-detectar (por UTM)
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -45,12 +120,9 @@ function Pagination({ page, totalPages, total, onPage }: PaginationProps) {
   if (totalPages <= 1) return null;
   const from = (page - 1) * 50 + 1;
   const to   = Math.min(page * 50, total);
-
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-secondary/10">
-      <span className="text-xs text-muted-foreground">
-        {from}–{to} de {total} leads
-      </span>
+      <span className="text-xs text-muted-foreground">{from}–{to} de {total} leads</span>
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPage(page - 1)}
@@ -59,9 +131,7 @@ function Pagination({ page, totalPages, total, onPage }: PaginationProps) {
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="text-xs font-medium text-foreground px-2">
-          {page} / {totalPages}
-        </span>
+        <span className="text-xs font-medium text-foreground px-2">{page} / {totalPages}</span>
         <button
           onClick={() => onPage(page + 1)}
           disabled={page === totalPages}
@@ -74,7 +144,7 @@ function Pagination({ page, totalPages, total, onPage }: PaginationProps) {
   );
 }
 
-// ─── Tabela ───────────────────────────────────────────────────────────────────
+// ─── Tabela principal ─────────────────────────────────────────────────────────
 
 interface Props {
   leads:      LeadRow[];
@@ -83,9 +153,10 @@ interface Props {
   totalPages: number;
   page:       number;
   onPage:     (p: number) => void;
+  onLeadUpdate: (id: string, patch: Partial<LeadRow>) => void;
 }
 
-export function LeadsTable({ leads, loading, total, totalPages, page, onPage }: Props) {
+export function LeadsTable({ leads, loading, total, totalPages, page, onPage, onLeadUpdate }: Props) {
   if (loading) {
     return (
       <div className="card-base p-6 flex items-center justify-center text-muted-foreground text-sm">
@@ -101,6 +172,15 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage }: 
         <p className="text-xs text-muted-foreground">Os leads aparecerão aqui conforme entrarem no CRM Helena via N8N.</p>
       </div>
     );
+  }
+
+  function handleOrigemUpdate(id: string, origemManual: LeadOrigem | null) {
+    const derived = leads.find((l) => l.id === id);
+    if (!derived) return;
+    onLeadUpdate(id, {
+      origemManual,
+      origem: origemManual ?? ORIGEM_CONFIG[derived.origem] ? derived.origem : "organico",
+    });
   }
 
   return (
@@ -131,7 +211,7 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage }: 
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <OrigemBadge origem={lead.origem} />
+                  <OrigemCell lead={lead} onUpdate={handleOrigemUpdate} />
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell">
                   {lead.origem === "organico" ? (

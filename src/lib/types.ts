@@ -145,6 +145,7 @@ export interface LeadRow {
   contactName:     string | null;
   contactPhone:    string | null;
   origem:          LeadOrigem;
+  origemManual:    LeadOrigem | null;
   utmSource:       string | null;
   utmMedium:       string | null;
   utmCampaign:     string | null;
