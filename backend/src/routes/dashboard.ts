@@ -32,6 +32,13 @@ function buildSalespersonFilter(salesperson?: string) {
   return salesperson ? { lead: { salespersonCrmId: salesperson } } : {};
 }
 
+function resolveStoreIds(role: string, allowedIds: string[], requestedIds: string[]): string[] {
+  if (role === "admin") return requestedIds;
+  return requestedIds.length > 0
+    ? requestedIds.filter((id) => allowedIds.includes(id))
+    : allowedIds;
+}
+
 const querySchema = {
   type: "object",
   properties: {
@@ -66,12 +73,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
       // Aplica filtro de loja de acordo com o papel do usuário (segurança server-side)
       const { role, storeIds: allowedStoreIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0
-          ? storeIds.filter((id) => allowedStoreIds.includes(id))
-          : allowedStoreIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedStoreIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end }     = getPeriodRange(period);
       const { start: ps, end: pe } = getPreviousPeriodRange(period);
@@ -209,10 +215,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
       const { role, storeIds: allowedIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end } = getPeriodRange(period);
       const baseFilter = { tenantId: tenant.id, ...buildStoreFilter(storeIds) };
@@ -273,10 +280,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
       const { role, storeIds: allowedIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end } = getPeriodRange(period);
 
@@ -337,10 +345,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
       const { role, storeIds: allowedIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end } = getPeriodRange(period);
 
@@ -419,10 +428,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
       const { role, storeIds: allowedIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end } = getPeriodRange(period);
 
@@ -497,10 +507,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
       const period   = (request.query.period ?? "30d") as Period;
       const { role, storeIds: allowedIds } = request.jwtUser!;
-      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
-      if (role === "vendedor" || role === "fabricante") {
-        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
-      }
+      let storeIds = resolveStoreIds(
+        role,
+        allowedIds,
+        request.query.storeIds?.split(",").filter(Boolean) ?? [],
+      );
 
       const { start, end } = getPeriodRange(period);
 

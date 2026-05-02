@@ -45,7 +45,7 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  const { user, isAdmin, isLojista, isVendedor, isAnalistaCRM, canManageUsers, allowedStoreIds, logout } = useAuth();
+  const { user, isAdmin, isFabricante, isLojista, isVendedor, isAnalistaCRM, canManageUsers, allowedStoreIds, logout } = useAuth();
   const { stores } = useStores();
   const { reloadUsers } = useUsersContext();
 
@@ -140,8 +140,10 @@ function AuthenticatedApp() {
             page={page}
             onPageChange={handlePageChange}
             isAdmin={isAdmin}
+            isFabricante={isFabricante}
             isLojista={isLojista}
             isVendedor={isVendedor}
+            isAnalistaCRM={isAnalistaCRM}
             canManageUsers={canManageUsers}
             user={user}
             roleLabel={roleLabel}
@@ -164,8 +166,10 @@ function AuthenticatedApp() {
                 page={page}
                 onPageChange={handlePageChange}
                 isAdmin={isAdmin}
+                isFabricante={isFabricante}
                 isLojista={isLojista}
                 isVendedor={isVendedor}
+                isAnalistaCRM={isAnalistaCRM}
                 canManageUsers={canManageUsers}
                 user={user}
                 roleLabel={roleLabel}
@@ -326,14 +330,16 @@ function AuthenticatedApp() {
 
 /* ─── Sidebar contents ─────────────────────────────────────────────────────── */
 function SidebarContents({
-  page, onPageChange, isAdmin, isLojista, isVendedor, canManageUsers, user, roleLabel,
-  userMenuOpen, setUserMenuOpen, logout, allowedStoreIds,
+  page, onPageChange, isAdmin, isFabricante, isLojista, isVendedor, isAnalistaCRM,
+  canManageUsers, user, roleLabel, userMenuOpen, setUserMenuOpen, logout, allowedStoreIds,
 }: {
   page: Page;
   onPageChange: (p: Page) => void;
   isAdmin: boolean;
+  isFabricante: boolean;
   isLojista: boolean;
   isVendedor: boolean;
+  isAnalistaCRM: boolean;
   canManageUsers: boolean;
   user: { name: string; email: string; avatarInitials: string; role: string } | null;
   roleLabel: string;
@@ -383,7 +389,7 @@ function SidebarContents({
           />
         )}
         {!isVendedor && (
-          isAdmin ? (
+          (isAdmin || isLojista || isFabricante || isAnalistaCRM) ? (
             <SidebarNavItem
               active={page === "trackeamento"}
               onClick={() => onPageChange("trackeamento")}
