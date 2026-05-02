@@ -1,0 +1,241 @@
+{
+  "name": "Helena CRM — Multi-Loja (Genérico)",
+  "nodes": [
+    {
+      "id": "node-1",
+      "name": "Webhook Helena",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "helena/:storeExternalId",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-2",
+      "name": "Configurar Instância",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "// ════════════════════════════════════════════════\n// CONFIGURAR UMA VEZ POR INSTÂNCIA N8N\n// ════════════════════════════════════════════════\n\nconst DASHBOARD_URL  = \"https://fabricante-dashboard-production.up.railway.app\";\nconst WEBHOOK_SECRET = \"pprrc1357\";\nconst TENANT_SLUG    = \"igui\";\n\n// ════════════════════════════════════════════════\n// LÓGICA (não alterar)\n// ════════════════════════════════════════════════\nconst webhookData     = $input.first().json;\nconst body            = webhookData.body   ?? webhookData;\nconst params          = webhookData.params ?? {};\n\nif (body.eventType !== 'CONTACT_TAG_UPDATE') {\n  return [{ json: { skip: true } }];\n}\n\nconst contactId       = body.content?.id;\nconst tagsId          = body.content?.tagsId ?? [];\nconst occurredAt      = body.date ?? new Date().toISOString();\nconst storeExternalId = params.storeExternalId;\n\nif (!contactId || !storeExternalId) {\n  return [{ json: { skip: true } }];\n}\n\nreturn [{\n  json: {\n    skip:             false,\n    contactId,\n    tagsId,\n    occurredAt,\n    storeExternalId,\n    dashboardUrl:     DASHBOARD_URL,\n    webhookSecret:    WEBHOOK_SECRET,\n    tenantSlug:       TENANT_SLUG,\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-3",
+      "name": "Buscar Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.dashboardUrl }}/api/ingest/crm-config/{{ $json.storeExternalId }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "tenantSlug", "value": "={{ $json.tenantSlug }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.webhookSecret }}" },
+            { "name": "accept",        "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-4",
+      "name": "Determinar Etapa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "jsCode": "const init       = $('Configurar Instância').first().json;\nconst configResp = $input.first().json;\n\nif (init.skip) return [{ json: { skip: true } }];\n\n// Config não encontrada no backend\nif (configResp.error || !Array.isArray(configResp.stageMap)) {\n  return [{ json: { skip: true } }];\n}\n\nconst { contactId, tagsId, occurredAt, storeExternalId, dashboardUrl, webhookSecret, tenantSlug } = init;\n\nconst stageMap      = configResp.stageMap;\nconst stagePriority = Array.isArray(configResp.stagePriority) ? configResp.stagePriority : [];\n\n// Constrói lookup tagId → {stepId, dashKey}\nconst stageByTagId = {};\nfor (const entry of stageMap) {\n  if (entry.tagId) stageByTagId[entry.tagId] = entry;\n}\n\nconst matched = tagsId.filter(t => stageByTagId[t]);\nif (matched.length === 0) return [{ json: { skip: true } }];\n\nconst winner = stagePriority.find(s => matched.includes(s)) ?? matched[0];\nconst stage  = stageByTagId[winner];\n\nreturn [{\n  json: {\n    skip:             false,\n    contactId,\n    stepId:           stage.stepId  ?? null,\n    dashKey:          stage.dashKey ?? null,\n    sendToDash:       (stage.dashKey ?? null) !== null,\n    storeExternalId,\n    dashboardUrl,\n    webhookSecret,\n    tenantSlug,\n    occurredAt,\n    eventId:          contactId + '-' + occurredAt,\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-5",
+      "name": "É etapa de funil?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.contactId }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-6",
+      "name": "Buscar Dados Helena",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dashboardUrl }}/api/ingest/helena/fetch-card-data",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.webhookSecret }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ storeExternalId: $json.storeExternalId, contactId: $json.contactId, tenantSlug: $json.tenantSlug }) }}",
+        "options": {
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-7",
+      "name": "Card encontrado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 180],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.cardId }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node-8",
+      "name": "Mover Card",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 60],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Determinar Etapa').first().json.dashboardUrl }}/api/ingest/helena/move-card",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Determinar Etapa').first().json.webhookSecret }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ storeExternalId: $('Determinar Etapa').first().json.storeExternalId, cardId: $json.cardId, stepId: $('Determinar Etapa').first().json.stepId, tenantSlug: $('Determinar Etapa').first().json.tenantSlug }) }}",
+        "options": {
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-9",
+      "name": "Montar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 180],
+      "parameters": {
+        "jsCode": "const ctx  = $('Determinar Etapa').first().json;\nconst data = $('Buscar Dados Helena').first().json;\n\nif (!ctx.sendToDash) return [];\n\nconst meta = {};\nif (data.agentEmail)             meta.crmUserId       = data.agentEmail;\nif (data.agentName)              meta.salespersonName = data.agentName;\nif (data.contactName)            meta.name            = data.contactName;\nif (data.contactPhone)           meta.phone           = data.contactPhone;\nif (data.monetaryAmount != null) { meta.value = data.monetaryAmount; meta.currency = 'BRL'; }\nif (data.utmSource)              meta.utm_source      = data.utmSource;\nif (data.utmMedium)              meta.utm_medium      = data.utmMedium;\nif (data.utmCampaign)            meta.utm_campaign    = data.utmCampaign;\nif (data.utmContent)             meta.utm_content     = data.utmContent;\n\nconst payload = JSON.stringify({\n  event_id:          ctx.eventId,\n  crm_source:        'helena',\n  tenant_slug:       ctx.tenantSlug,\n  store_external_id: ctx.storeExternalId,\n  lead_external_id:  ctx.contactId,\n  to_stage:          ctx.dashKey,\n  occurred_at:       ctx.occurredAt,\n  metadata:          meta\n});\n\nreturn [{ json: { ...ctx, payload } }];"
+      }
+    },
+    {
+      "id": "node-10",
+      "name": "Enviar ao Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.dashboardUrl }}/api/ingest/event",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.webhookSecret }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payload }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Helena": {
+      "main": [[{ "node": "Configurar Instância", "type": "main", "index": 0 }]]
+    },
+    "Configurar Instância": {
+      "main": [[{ "node": "Buscar Config", "type": "main", "index": 0 }]]
+    },
+    "Buscar Config": {
+      "main": [[{ "node": "Determinar Etapa", "type": "main", "index": 0 }]]
+    },
+    "Determinar Etapa": {
+      "main": [[{ "node": "É etapa de funil?", "type": "main", "index": 0 }]]
+    },
+    "É etapa de funil?": {
+      "main": [
+        [{ "node": "Buscar Dados Helena", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Buscar Dados Helena": {
+      "main": [[{ "node": "Card encontrado?", "type": "main", "index": 0 }]]
+    },
+    "Card encontrado?": {
+      "main": [
+        [{ "node": "Mover Card",     "type": "main", "index": 0 }],
+        [{ "node": "Montar Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mover Card": {
+      "main": [[{ "node": "Montar Payload", "type": "main", "index": 0 }]]
+    },
+    "Montar Payload": {
+      "main": [[{ "node": "Enviar ao Dashboard", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
