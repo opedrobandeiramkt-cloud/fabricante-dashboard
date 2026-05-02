@@ -2,6 +2,7 @@ import type {
   FunnelStageData,
   GoalData,
   KPIData,
+  LeadRow,
   Period,
   StageTimeData,
   StoreRankingRow,
@@ -59,6 +60,10 @@ export const api = {
 
   stageTime(storeIds: string[], period: Period, salesperson?: string): Promise<StageTimeData[]> {
     return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period, salesperson)}`);
+  },
+
+  leads(storeIds: string[], period: Period): Promise<LeadRow[]> {
+    return apiFetch(`/api/dashboard/leads?${buildParams(storeIds, period)}`);
   },
 
   goal(storeId: string, salesperson: string): Promise<GoalData> {

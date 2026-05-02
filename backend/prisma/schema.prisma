@@ -80,6 +80,9 @@ model Lead {
   revenue              Float?
   revenueCurrency      String?   @default("BRL") @map("revenue_currency")
   revenueAt            DateTime? @map("revenue_at")
+  contactName          String?   @map("contact_name")
+  contactPhone         String?   @map("contact_phone")
+  salespersonName      String?   @map("salesperson_name")
   utmSource            String?   @map("utm_source")
   utmMedium            String?   @map("utm_medium")
   utmCampaign          String?   @map("utm_campaign")

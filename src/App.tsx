@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
-  Download, Menu, TrendingUp, Zap,
+  Download, Menu, Zap,
 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
@@ -15,6 +15,7 @@ import { SalesGoalProgress }   from "@/components/dashboard/SalesGoalProgress";
 import { VendedorDashboard }   from "@/components/dashboard/VendedorDashboard";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
+import { TrackeamentoPage }    from "@/components/trackeamento/TrackeamentoPage";
 import { LoginPage }           from "@/components/auth/LoginPage";
 import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
@@ -26,7 +27,7 @@ import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
 
 const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
-type Page = "dashboard" | "stores" | "users";
+type Page = "dashboard" | "stores" | "users" | "trackeamento";
 
 export default function App() {
   const { isAuthenticated } = useAuth();
@@ -117,8 +118,9 @@ function AuthenticatedApp() {
   }
 
   const pageTitle =
-    page === "dashboard" ? "Dashboard" :
-    page === "stores"    ? "Lojas"     : "Usuários";
+    page === "dashboard"    ? "Dashboard"    :
+    page === "stores"       ? "Lojas"        :
+    page === "trackeamento" ? "Trackeamento" : "Usuários";
 
   const roleLabel =
     isAdmin       ? "Administrador"   :
@@ -193,15 +195,15 @@ function AuthenticatedApp() {
           {/* Page title */}
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
-            {page === "dashboard" && !isVendedor && (
+            {(page === "dashboard" || page === "trackeamento") && !isVendedor && (
               <p className="text-[10px] text-muted-foreground hidden sm:block">
                 {PERIOD_LABELS[period]} · {selectedStores.length === 0 ? "Todas as lojas" : `${selectedStores.length} loja${selectedStores.length !== 1 ? "s" : ""}`}
               </p>
             )}
           </div>
 
-          {/* Controls — só no dashboard e não vendedor */}
-          {page === "dashboard" && !isVendedor && (
+          {/* Controls — dashboard e trackeamento, não vendedor */}
+          {(page === "dashboard" || page === "trackeamento") && !isVendedor && (
             <div className="flex items-center gap-2">
               <div className="hidden lg:block">
                 <StoreFilter
@@ -238,7 +240,7 @@ function AuthenticatedApp() {
         </header>
 
         {/* Mobile filters strip */}
-        {page === "dashboard" && !isVendedor && (
+        {(page === "dashboard" || page === "trackeamento") && !isVendedor && (
           <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-border bg-card/20 overflow-x-auto">
             <StoreFilter
               selected={selectedStores}
@@ -305,6 +307,8 @@ function AuthenticatedApp() {
               </div>
             ) : page === "stores" ? (
               <StoresPage readOnly={!isAdmin} />
+            ) : page === "trackeamento" ? (
+              <TrackeamentoPage filters={filters} />
             ) : (
               <UsersPage />
             )}
@@ -379,10 +383,11 @@ function SidebarContents({
           />
         )}
         {!isVendedor && (
-          <SidebarNavItemDisabled
+          <SidebarNavItem
+            active={page === "trackeamento"}
+            onClick={() => onPageChange("trackeamento")}
             icon={<Zap className="h-4 w-4" />}
             label="Trackeamento"
-            badge="em breve"
           />
         )}
       </nav>
@@ -483,5 +488,3 @@ function SidebarNavItemDisabled({ icon, label, badge }: {
   );
 }
 
-// TrendingUp kept in imports — reserved for future dashboard sub-navigation
-void TrendingUp;

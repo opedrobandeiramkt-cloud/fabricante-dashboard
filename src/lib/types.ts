@@ -136,6 +136,27 @@ export interface Orcamento {
   wonAt?: string;           // ISO 8601 — preenchido ao marcar como ganho
 }
 
+// ─── Trackeamento / Leads ─────────────────────────────────────────────────────
+
+export type LeadOrigem = "meta" | "google" | "instagram" | "organico";
+
+export interface LeadRow {
+  id:              string;
+  contactName:     string | null;
+  contactPhone:    string | null;
+  origem:          LeadOrigem;
+  utmSource:       string | null;
+  utmMedium:       string | null;
+  utmCampaign:     string | null;
+  utmContent:      string | null;
+  stageLabel:      string | null;
+  stageKey:        string | null;
+  revenue:         number | null;
+  salespersonName: string | null;
+  storeName:       string;
+  enteredAt:       string;
+}
+
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export type Period = "7d" | "30d" | "90d" | "12m";

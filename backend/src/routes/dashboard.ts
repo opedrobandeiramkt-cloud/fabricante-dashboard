@@ -6,6 +6,19 @@ import { requireAuth } from "../lib/require-auth.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+type LeadOrigem = "meta" | "google" | "instagram" | "organico";
+
+function deriveOrigem(utmSource: string | null, utmMedium: string | null): LeadOrigem {
+  const src = (utmSource ?? "").toLowerCase();
+  const med = (utmMedium  ?? "").toLowerCase();
+  if (!src && !med) return "organico";
+  if (src.includes("instagram") || med === "link_in_bio" || med === "instagram") return "instagram";
+  if (src.includes("facebook") || src === "fb" || src.includes("meta")) return "meta";
+  if (src.includes("google")) return "google";
+  if (med === "cpc" || med === "paid" || med === "paidsocial") return "meta"; // fallback paid = meta
+  return "organico";
+}
+
 function delta(current: number, previous: number): number {
   if (previous === 0) return 0;
   return parseFloat(((current - previous) / previous * 100).toFixed(1));
@@ -473,6 +486,56 @@ export async function dashboardRoutes(app: FastifyInstance) {
       return reply.send(
         result.map((r) => ({ ...r, isBottleneck: r.avgDays > 0 && r.avgDays > globalAvg * 1.3 }))
       );
+    }
+  );
+
+  // ── GET /api/dashboard/leads ─────────────────────────────────────────────────
+  app.get<{ Querystring: DashboardQuery }>(
+    "/api/dashboard/leads",
+    { schema: { querystring: querySchema } },
+    async (request, reply) => {
+      const tenant   = (request as unknown as Record<string, unknown>).tenant as { id: string };
+      const period   = (request.query.period ?? "30d") as Period;
+      const { role, storeIds: allowedIds } = request.jwtUser!;
+      let storeIds = request.query.storeIds?.split(",").filter(Boolean) ?? [];
+      if (role === "vendedor" || role === "fabricante") {
+        storeIds = storeIds.length > 0 ? storeIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      }
+
+      const { start, end } = getPeriodRange(period);
+
+      const leads = await prisma.lead.findMany({
+        where: {
+          tenantId:  tenant.id,
+          ...buildStoreFilter(storeIds),
+          enteredAt: { gte: start, lte: end },
+        },
+        include: {
+          currentStage: { select: { key: true, label: true } },
+          store:        { select: { name: true } },
+        },
+        orderBy: { enteredAt: "desc" },
+        take:    500,
+      });
+
+      const result = leads.map((lead) => ({
+        id:              lead.id,
+        contactName:     lead.contactName,
+        contactPhone:    lead.contactPhone,
+        origem:          deriveOrigem(lead.utmSource, lead.utmMedium),
+        utmSource:       lead.utmSource,
+        utmMedium:       lead.utmMedium,
+        utmCampaign:     lead.utmCampaign,
+        utmContent:      lead.utmContent,
+        stageLabel:      lead.currentStage?.label ?? null,
+        stageKey:        lead.currentStage?.key   ?? null,
+        revenue:         lead.revenue,
+        salespersonName: lead.salespersonName ?? lead.salespersonCrmId ?? null,
+        storeName:       lead.store.name,
+        enteredAt:       lead.enteredAt.toISOString(),
+      }));
+
+      return reply.send(result);
     }
   );
 
