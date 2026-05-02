@@ -383,12 +383,20 @@ function SidebarContents({
           />
         )}
         {!isVendedor && (
-          <SidebarNavItem
-            active={page === "trackeamento"}
-            onClick={() => onPageChange("trackeamento")}
-            icon={<Zap className="h-4 w-4" />}
-            label="Trackeamento"
-          />
+          isAdmin ? (
+            <SidebarNavItem
+              active={page === "trackeamento"}
+              onClick={() => onPageChange("trackeamento")}
+              icon={<Zap className="h-4 w-4" />}
+              label="Trackeamento"
+            />
+          ) : (
+            <SidebarNavItemDisabled
+              icon={<Zap className="h-4 w-4" />}
+              label="Trackeamento"
+              badge="em breve"
+            />
+          )
         )}
       </nav>
 
