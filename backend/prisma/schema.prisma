@@ -39,6 +39,7 @@ model Store {
   leads      Lead[]
   leadEvents LeadEvent[]
   quotes     Quote[]
+  crmConfigs StoreCrmConfig[]
 
   @@unique([tenantId, externalId])
   @@index([tenantId])
@@ -77,6 +78,7 @@ model Lead {
   firstResponseMinutes Int?      @map("first_response_minutes")
   salespersonCrmId     String?   @map("salesperson_crm_id")
   metadata             Json      @default("{}")
+  estimatedValue       Float?    @map("estimated_value")
   revenue              Float?
   revenueCurrency      String?   @default("BRL") @map("revenue_currency")
   revenueAt            DateTime? @map("revenue_at")
@@ -181,6 +183,43 @@ model Quote {
   @@index([tenantId, status,     createdAt(sort: Desc)])
   @@index([tenantId, vendedorId, createdAt(sort: Desc)])
   @@map("quotes")
+}
+
+// ─── Configuração de CRM por loja ────────────────────────────────────────────
+model StoreCrmConfig {
+  id              String   @id @default(uuid())
+  storeId         String   @map("store_id")
+  crmSource       String   @default("helena") @map("crm_source") // "helena"
+  panelId         String   @map("panel_id")
+  helenaTokenEnc  String   @map("helena_token_enc")  // AES-256-GCM ciphertext (hex)
+  helenaTokenIv   String   @map("helena_token_iv")   // IV (hex, 12 bytes)
+  helenaTokenTag  String   @map("helena_token_tag")  // Auth tag (hex, 16 bytes)
+  stageMap        Json     @map("stage_map")         // [{tagId, stepId, dashKey}]
+  stagePriority   Json     @map("stage_priority")    // [tagId, ...] ordem de prioridade
+  version         Int      @default(1)
+  updatedBy       String?  @map("updated_by")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  store    Store               @relation(fields: [storeId], references: [id])
+  audits   StoreCrmConfigAudit[]
+
+  @@unique([storeId, crmSource])
+  @@index([storeId])
+  @@map("store_crm_configs")
+}
+
+model StoreCrmConfigAudit {
+  id          String   @id @default(uuid())
+  configId    String   @map("config_id")
+  changedBy   String?  @map("changed_by")
+  changedAt   DateTime @default(now()) @map("changed_at")
+  snapshotJson Json    @map("snapshot_json") // estado antes da mudança
+
+  config StoreCrmConfig @relation(fields: [configId], references: [id])
+
+  @@index([configId, changedAt(sort: Desc)])
+  @@map("store_crm_config_audits")
 }
 
 // ─── Tokens de reset de senha ─────────────────────────────────────────────────

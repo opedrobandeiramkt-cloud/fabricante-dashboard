@@ -538,6 +538,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
         prisma.lead.count({ where }),
       ]);
 
+      // Detecta telefones duplicados no tenant inteiro (não apenas na página atual)
+      const phones = leads.map(l => l.contactPhone).filter((p): p is string => p != null && p !== "");
+      const duplicatePhones = phones.length > 0
+        ? await prisma.lead.groupBy({
+            by:     ["contactPhone"],
+            where:  { tenantId: tenant.id, contactPhone: { in: phones } },
+            _count: { contactPhone: true },
+            having: { contactPhone: { _count: { gt: 1 } } },
+          })
+        : [];
+      const dupPhoneSet = new Set(duplicatePhones.map(d => d.contactPhone as string));
+
       const VALID_ORIGINS = new Set(["meta", "google", "instagram", "organico", "indicacao", "evento"]);
 
       const data = leads.map((lead) => {
@@ -556,10 +568,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
           utmContent:      lead.utmContent,
           stageLabel:      lead.currentStage?.label ?? null,
           stageKey:        lead.currentStage?.key   ?? null,
+          estimatedValue:  lead.estimatedValue,
           revenue:         lead.revenue,
           salespersonName: lead.salespersonName ?? lead.salespersonCrmId ?? null,
           storeName:       lead.store.name,
           enteredAt:       lead.enteredAt.toISOString(),
+          isDuplicate:     lead.contactPhone != null && dupPhoneSet.has(lead.contactPhone),
         };
       });
 

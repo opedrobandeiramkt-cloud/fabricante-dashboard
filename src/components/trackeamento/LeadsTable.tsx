@@ -205,9 +205,19 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage, on
             {leads.map((lead) => (
               <tr key={lead.id} className="hover:bg-secondary/20 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-foreground truncate max-w-[160px]">
-                    {lead.contactName ?? <span className="text-muted-foreground">—</span>}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-foreground truncate max-w-[150px]">
+                      {lead.contactName ?? <span className="text-muted-foreground">—</span>}
+                    </p>
+                    {lead.isDuplicate && (
+                      <span
+                        title="Telefone duplicado — este número já aparece em outro lead"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25 flex-shrink-0"
+                      >
+                        DUP
+                      </span>
+                    )}
+                  </div>
                   {lead.contactPhone && (
                     <p className="text-xs text-muted-foreground mt-0.5">{lead.contactPhone}</p>
                   )}
@@ -237,9 +247,17 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage, on
                   </span>
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell">
-                  <span className={`text-sm font-medium ${lead.revenue ? "text-[hsl(var(--success))]" : "text-muted-foreground"}`}>
-                    {formatBRL(lead.revenue)}
-                  </span>
+                  {lead.revenue != null ? (
+                    <span className="text-sm font-medium text-[hsl(var(--success))]">
+                      {formatBRL(lead.revenue)}
+                    </span>
+                  ) : lead.estimatedValue != null ? (
+                    <span className="text-sm font-medium text-amber-400" title="Valor estimado — ainda não convertido">
+                      {formatBRL(lead.estimatedValue)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className="text-sm text-muted-foreground truncate max-w-[120px] block">

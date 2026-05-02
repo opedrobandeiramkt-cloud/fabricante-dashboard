@@ -6,10 +6,7 @@
       "name": "Webhook Helena",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        240,
-        300
-      ],
+      "position": [240, 300],
       "parameters": {
         "httpMethod": "POST",
         "path": "helena-loja-maringa",
@@ -22,10 +19,7 @@
       "name": "Determinar Etapa",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        460,
-        300
-      ],
+      "position": [460, 300],
       "parameters": {
         "jsCode": "// ════════════════════════════════════════════════\n// CONFIGURAR PARA CADA LOJA\n// ════════════════════════════════════════════════\n\nconst PANEL_ID          = \"ddd69db3-e0e9-43dd-b7e9-caca39191f53\";\nconst HELENA_TOKEN      = \"pn_r2wckLvlRLYcVF0B3NwLfHTnRLuOzsiqOmx3BYqU0xE\";\nconst STORE_EXTERNAL_ID = \"loja-maringa\";  // ID externo único por loja\nconst DASHBOARD_URL     = \"https://fabricante-dashboard-production.up.railway.app\";\nconst WEBHOOK_SECRET    = \"pprrc1357\";\n\n// Mapeamento: UUID da etiqueta Helena → stepId do Kanban + dashKey do funil\n// dashKey null = move o card no Kanban mas não registra no Dashboard\nconst STAGE_MAP = {\n  // 01.Classificar → Lead Capturado\n  \"fa577cc1-538b-4865-ad28-47fe418e8a8f\": { stepId: \"bf520368-c720-4c5b-b978-dd82f8ca6c50\", dashKey: \"lead_capturado\" },\n  // 02.Qualificação → registra no Dashboard para calcular tempo de 1ª resposta\n  \"d7473602-9f4b-4f55-a5c5-9fa663f08c93\": { stepId: \"fbfa00b1-63b4-48b5-b47b-3dbb38694440\", dashKey: \"visita_agendada\" },\n  // 03.Visita agendada → Visita Técnica Agendada\n  \"d09d13f5-a4e2-4928-97e7-60cbb18375c6\": { stepId: \"0ed8c146-9325-479c-9227-225f3ac7d122\", dashKey: \"visita_agendada\" },\n  // 04.Visita Realizada → Visita Realizada\n  \"70aaebcf-bed7-41ae-ae7f-186b21f2448c\": { stepId: \"65396ec0-9ce9-46cb-aab0-d42889d4fea1\", dashKey: \"visita_realizada\" },\n  // 05.AG Orçamento → Elaboração de Projeto 3D\n  \"32677154-b3c1-4482-8d94-63f1ad5a0645\": { stepId: \"002c6571-bed1-4555-9db6-0005cb27ecda\", dashKey: \"projeto_3d\" },\n  // 06.Orçamento Enviado → Orçamento Enviado\n  \"a80b3729-729e-4bb0-b5d9-844127fff502\": { stepId: \"b212c8ef-83e2-43b2-9a19-387e85f19d61\", dashKey: \"orcamento_enviado\" },\n  // 07.Negociação → Em Negociação\n  \"8514d798-0207-4123-a0aa-30c0f8f0d9f4\": { stepId: \"5761cdb4-7bd6-47df-98fc-42afb7d8462c\", dashKey: \"negociacao\" },\n  // 08.AG Assinatura → Contrato Enviado\n  \"c51c7959-ad2a-4339-ac17-eb5741cb1e79\": { stepId: \"e37015b3-2c9b-45cc-8afb-6d021187a158\", dashKey: \"contrato_enviado\" },\n  // 09.1AG Pagamento → Aguardando Pagamento\n  \"c1f06360-048f-438a-bc63-96de6ad3f26e\": { stepId: \"5570c9bd-dfe9-43ca-aee0-54b884cbc61d\", dashKey: \"aguardando_pagamento\" },\n  // 09.3PG Aprovado → Pagamento Aprovado\n  \"d9c5a679-138e-4c0c-8eb0-5ce716f06bed\": { stepId: \"849d3636-a831-4ab9-bc33-0ef64d9a6d3c\", dashKey: \"pagamento_aprovado\" },\n  // 09.2Venda Perdida → só move no Kanban\n  \"bcb59f5f-a5bc-48be-b39e-29ad087bcae3\": { stepId: \"09ff3b51-5de1-4fd8-9e9b-ef001971bf5c\", dashKey: null },\n  // 10.Obra Futura → só move no Kanban\n  \"f6ce83fe-b490-40d2-b814-6e5058da9531\": { stepId: \"b5c3b82f-9ea8-4a32-b1bc-e29705ab6f9b\", dashKey: null }\n};\n\nconst STAGE_PRIORITY = [\n  \"d9c5a679-138e-4c0c-8eb0-5ce716f06bed\",  // 09.3 PG Aprovado\n  \"bcb59f5f-a5bc-48be-b39e-29ad087bcae3\",  // 09.2 Venda Perdida\n  \"f6ce83fe-b490-40d2-b814-6e5058da9531\",  // 10. Obra Futura\n  \"c1f06360-048f-438a-bc63-96de6ad3f26e\",  // 09.1 AG Pagamento\n  \"c51c7959-ad2a-4339-ac17-eb5741cb1e79\",  // 08. AG Assinatura\n  \"8514d798-0207-4123-a0aa-30c0f8f0d9f4\",  // 07. Negociação\n  \"a80b3729-729e-4bb0-b5d9-844127fff502\",  // 06. Orçamento Enviado\n  \"32677154-b3c1-4482-8d94-63f1ad5a0645\",  // 05. AG Orçamento\n  \"70aaebcf-bed7-41ae-ae7f-186b21f2448c\",  // 04. Visita Realizada\n  \"d09d13f5-a4e2-4928-97e7-60cbb18375c6\",  // 03. Visita agendada\n  \"d7473602-9f4b-4f55-a5c5-9fa663f08c93\",  // 02. Qualificação\n  \"fa577cc1-538b-4865-ad28-47fe418e8a8f\"   // 01. Classificar\n];\n\n// ════════════════════════════════════════════════\n// LÓGICA (não alterar)\n// ════════════════════════════════════════════════\nconst body = $input.first().json.body ?? $input.first().json;\n\nif (body.eventType !== 'CONTACT_TAG_UPDATE') {\n  return [{ json: { skip: true } }];\n}\n\nconst tagsId    = body.content?.tagsId ?? [];\nconst contactId = body.content?.id;\n\nif (!contactId) return [{ json: { skip: true } }];\n\nconst matched = tagsId.filter(t => STAGE_MAP[t]);\nif (matched.length === 0) return [{ json: { skip: true } }];\n\nconst winner = STAGE_PRIORITY.find(s => matched.includes(s)) ?? matched[0];\nconst stage  = STAGE_MAP[winner];\n\nreturn [{\n  json: {\n    skip:            false,\n    contactId,\n    stepId:          stage.stepId,\n    dashKey:         stage.dashKey ?? null,\n    sendToDash:      stage.dashKey !== null,\n    panelId:         PANEL_ID,\n    helenToken:      HELENA_TOKEN,\n    storeExternalId: STORE_EXTERNAL_ID,\n    dashboardUrl:    DASHBOARD_URL,\n    webhookSecret:   WEBHOOK_SECRET,\n    occurredAt:      body.date,\n    eventId:         contactId + '-' + body.date\n  }\n}];"
       }
@@ -35,10 +29,7 @@
       "name": "É etapa de funil?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        680,
-        300
-      ],
+      "position": [680, 300],
       "parameters": {
         "conditions": {
           "options": {
@@ -66,52 +57,75 @@
       "name": "Buscar Card",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        900,
-        180
-      ],
+      "position": [900, 180],
       "parameters": {
         "method": "GET",
         "url": "https://api.helena.run/crm/v1/panel/card",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "PanelId",
-              "value": "={{ $json.panelId }}"
-            },
-            {
-              "name": "ContactId",
-              "value": "={{ $json.contactId }}"
-            },
-            {
-              "name": "IncludeArchived",
-              "value": "false"
-            },
-            {
-              "name": "PageSize",
-              "value": "1"
-            }
+            { "name": "PanelId",         "value": "={{ $json.panelId }}" },
+            { "name": "ContactId",       "value": "={{ $json.contactId }}" },
+            { "name": "IncludeArchived", "value": "false" },
+            { "name": "PageSize",        "value": "1" }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $json.helenToken }}"
-            },
-            {
-              "name": "accept",
-              "value": "application/json"
-            }
+            { "name": "Authorization", "value": "=Bearer {{ $json.helenToken }}" },
+            { "name": "accept",        "value": "application/json" }
           ]
         },
         "options": {
           "response": {
-            "response": {
-              "neverError": true
-            }
+            "response": { "neverError": true }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-10",
+      "name": "Buscar Contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.helena.run/core/v1/contact/{{ $('Determinar Etapa').first().json.contactId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Determinar Etapa').first().json.helenToken }}" },
+            { "name": "accept",        "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": { "neverError": true }
+          }
+        }
+      }
+    },
+    {
+      "id": "node-11",
+      "name": "Buscar Agentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.helena.run/core/v1/agent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Determinar Etapa').first().json.helenToken }}" },
+            { "name": "accept",        "value": "application/json" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": { "neverError": true }
           }
         }
       }
@@ -121,12 +135,9 @@
       "name": "Extrair Card ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1120,
-        180
-      ],
+      "position": [1340, 300],
       "parameters": {
-        "jsCode": "const ctx  = $('É etapa de funil?').first().json;\nconst resp = $input.first().json;\n\nlet cardId      = null;\nlet cardFound   = false;\nlet cardRaw     = null;\nlet agentEmail  = null;\nlet monetaryAmount = null;\nlet utmSource   = null;\nlet utmMedium   = null;\nlet utmCampaign = null;\nlet utmContent  = null;\n\ntry {\n  const items = resp.items ?? resp.data ?? [];\n  const list  = Array.isArray(items) ? items : [];\n  const card  = list[0];\n  if (card?.id) {\n    cardId     = card.id;\n    cardFound  = true;\n    cardRaw    = card;\n    agentEmail = card?.assignedUser?.email ?? card?.agent?.email ?? card?.meta?.assignee?.email ?? null;\n\n    monetaryAmount = card?.monetaryAmount ?? card?.value ?? null;\n\n    const fields = card?.contact?.customFields ?? card?.customFields ?? card?.fields ?? {};\n    utmSource   = fields.utm_source   ?? fields.utmSource   ?? null;\n    utmMedium   = fields.utm_medium   ?? fields.utmMedium   ?? null;\n    utmCampaign = fields.utm_campaign ?? fields.utmCampaign ?? null;\n    utmContent  = fields.utm_content  ?? fields.utmContent  ?? null;\n  }\n} catch(e) {}\n\nreturn [{ json: { ...ctx, cardId, cardFound, cardRaw, agentEmail, monetaryAmount, utmSource, utmMedium, utmCampaign, utmContent } }];"
+        "jsCode": "const ctx         = $('Determinar Etapa').first().json;\nconst cardResp    = $('Buscar Card').first().json;\nconst contactResp = $('Buscar Contato').first().json;\nconst agentsResp  = $input.first().json;\n\nlet cardId         = null;\nlet cardFound      = false;\nlet agentEmail     = null;\nlet agentName      = null;\nlet contactName    = null;\nlet contactPhone   = null;\nlet monetaryAmount = null;\nlet utmSource      = null;\nlet utmMedium      = null;\nlet utmCampaign    = null;\nlet utmContent     = null;\n\n// Dados do card (monetaryAmount + vendedor via responsibleUserId)\ntry {\n  const items = cardResp.items ?? cardResp.data ?? [];\n  const list  = Array.isArray(items) ? items : [];\n  const card  = list[0];\n  if (card?.id) {\n    cardId         = card.id;\n    cardFound      = true;\n    monetaryAmount = card.monetaryAmount ?? card.value ?? null;\n\n    const responsibleUserId = card.responsibleUserId ?? null;\n    if (responsibleUserId) {\n      const agents = Array.isArray(agentsResp) ? agentsResp : [];\n      const agent  = agents.find(a => a.userId === responsibleUserId);\n      if (agent) {\n        agentEmail = agent.email ?? null;\n        agentName  = agent.name  ?? null;\n      }\n    }\n  }\n} catch(e) {}\n\n// Dados do contato: nome, telefone e UTMs (via API /core/v1/contact)\ntry {\n  contactName  = contactResp.name ?? null;\n  contactPhone = contactResp.phoneNumberFormatted ?? contactResp.phoneNumber?.replace('|', ' ') ?? null;\n\n  const utm = contactResp.utm ?? {};\n  utmSource   = utm.source   ?? null;\n  utmMedium   = utm.medium   ?? null;\n  utmCampaign = utm.campaign ?? null;\n  utmContent  = utm.content  ?? utm.headline ?? null;\n} catch(e) {}\n\nreturn [{ json: { ...ctx, cardId, cardFound, agentEmail, agentName, contactName, contactPhone, monetaryAmount, utmSource, utmMedium, utmCampaign, utmContent } }];"
       }
     },
     {
@@ -134,10 +145,7 @@
       "name": "Card encontrado?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        1340,
-        180
-      ],
+      "position": [1560, 300],
       "parameters": {
         "conditions": {
           "options": {
@@ -165,28 +173,16 @@
       "name": "Mover Card",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1560,
-        80
-      ],
+      "position": [1780, 180],
       "parameters": {
         "method": "PUT",
         "url": "=https://api.helena.run/crm/v1/panel/card/{{ $json.cardId }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $json.helenToken }}"
-            },
-            {
-              "name": "accept",
-              "value": "application/json"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
+            { "name": "Authorization", "value": "=Bearer {{ $json.helenToken }}" },
+            { "name": "accept",        "value": "application/json" },
+            { "name": "Content-Type",  "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -195,9 +191,7 @@
         "body": "={{ JSON.stringify({ fields: ['stepId'], stepId: $json.stepId }) }}",
         "options": {
           "response": {
-            "response": {
-              "neverError": true
-            }
+            "response": { "neverError": true }
           }
         }
       }
@@ -207,12 +201,9 @@
       "name": "Montar Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1780,
-        80
-      ],
+      "position": [2000, 180],
       "parameters": {
-        "jsCode": "const d = $('Extrair Card ID').first().json;\n\nif (!d.sendToDash) {\n  return [{ json: { ...d, payload: '{}' } }];\n}\n\nconst meta = {};\nif (d.agentEmail)             meta.crmUserId    = d.agentEmail;\nif (d.monetaryAmount != null) { meta.value = d.monetaryAmount; meta.currency = 'BRL'; }\nif (d.utmSource)   meta.utm_source   = d.utmSource;\nif (d.utmMedium)   meta.utm_medium   = d.utmMedium;\nif (d.utmCampaign) meta.utm_campaign = d.utmCampaign;\nif (d.utmContent)  meta.utm_content  = d.utmContent;\n\nconst payload = JSON.stringify({\n  event_id:          d.eventId,\n  crm_source:        'helena',\n  tenant_slug:       'igui',\n  store_external_id: d.storeExternalId,\n  lead_external_id:  d.contactId,\n  to_stage:          d.dashKey,\n  occurred_at:       d.occurredAt,\n  metadata:          meta\n});\n\nreturn [{ json: { ...d, payload } }];"
+        "jsCode": "const d = $('Extrair Card ID').first().json;\n\nif (!d.sendToDash) {\n  return [];\n}\n\nconst meta = {};\nif (d.agentEmail)             meta.crmUserId       = d.agentEmail;\nif (d.agentName)              meta.salespersonName = d.agentName;\nif (d.contactName)            meta.name            = d.contactName;\nif (d.contactPhone)           meta.phone           = d.contactPhone;\nif (d.monetaryAmount != null) { meta.value = d.monetaryAmount; meta.currency = 'BRL'; }\nif (d.utmSource)   meta.utm_source   = d.utmSource;\nif (d.utmMedium)   meta.utm_medium   = d.utmMedium;\nif (d.utmCampaign) meta.utm_campaign = d.utmCampaign;\nif (d.utmContent)  meta.utm_content  = d.utmContent;\n\nconst payload = JSON.stringify({\n  event_id:          d.eventId,\n  crm_source:        'helena',\n  tenant_slug:       'igui',\n  store_external_id: d.storeExternalId,\n  lead_external_id:  d.contactId,\n  to_stage:          d.dashKey,\n  occurred_at:       d.occurredAt,\n  metadata:          meta\n});\n\nreturn [{ json: { ...d, payload } }];"
       }
     },
     {
@@ -220,24 +211,15 @@
       "name": "Enviar ao Dashboard",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1980,
-        80
-      ],
+      "position": [2200, 180],
       "parameters": {
         "method": "POST",
         "url": "={{ $json.dashboardUrl }}/api/ingest/event",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
+            { "name": "Authorization", "value": "=Bearer {{ $json.webhookSecret }}" },
+            { "name": "Content-Type",  "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -250,100 +232,40 @@
   ],
   "connections": {
     "Webhook Helena": {
-      "main": [
-        [
-          {
-            "node": "Determinar Etapa",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Determinar Etapa", "type": "main", "index": 0 }]]
     },
     "Determinar Etapa": {
-      "main": [
-        [
-          {
-            "node": "É etapa de funil?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "É etapa de funil?", "type": "main", "index": 0 }]]
     },
     "É etapa de funil?": {
       "main": [
-        [
-          {
-            "node": "Buscar Card",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [{ "node": "Buscar Card",    "type": "main", "index": 0 }],
         []
       ]
     },
     "Buscar Card": {
-      "main": [
-        [
-          {
-            "node": "Extrair Card ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Buscar Contato", "type": "main", "index": 0 }]]
+    },
+    "Buscar Contato": {
+      "main": [[{ "node": "Buscar Agentes", "type": "main", "index": 0 }]]
+    },
+    "Buscar Agentes": {
+      "main": [[{ "node": "Extrair Card ID", "type": "main", "index": 0 }]]
     },
     "Extrair Card ID": {
-      "main": [
-        [
-          {
-            "node": "Card encontrado?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Card encontrado?", "type": "main", "index": 0 }]]
     },
     "Card encontrado?": {
       "main": [
-        [
-          {
-            "node": "Mover Card",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Montar Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Mover Card",      "type": "main", "index": 0 }],
+        [{ "node": "Montar Payload",  "type": "main", "index": 0 }]
       ]
     },
     "Mover Card": {
-      "main": [
-        [
-          {
-            "node": "Montar Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Montar Payload", "type": "main", "index": 0 }]]
     },
     "Montar Payload": {
-      "main": [
-        [
-          {
-            "node": "Enviar ao Dashboard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Enviar ao Dashboard", "type": "main", "index": 0 }]]
     }
   },
   "active": false,

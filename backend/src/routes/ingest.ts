@@ -189,6 +189,7 @@ export async function ingestRoutes(app: FastifyInstance) {
               contactName,
               contactPhone,
               metadata:         (body.metadata ?? {}) as object,
+              estimatedValue:   revenueValue,
               revenue:          toStage.isWon ? revenueValue : null,
               revenueCurrency:  toStage.isWon ? revenueCurrency : null,
               revenueAt:        toStage.isWon ? occurredAt : null,
@@ -204,6 +205,7 @@ export async function ingestRoutes(app: FastifyInstance) {
               ...(salespersonName   ? { salespersonName }   : {}),
               ...(contactName       ? { contactName }       : {}),
               ...(contactPhone      ? { contactPhone }      : {}),
+              ...(revenueValue != null ? { estimatedValue: revenueValue } : {}),
               ...(toStage.isWon && revenueValue != null ? {
                 revenue:         revenueValue,
                 revenueCurrency,

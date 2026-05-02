@@ -152,7 +152,9 @@ export interface LeadRow {
   utmContent:      string | null;
   stageLabel:      string | null;
   stageKey:        string | null;
+  estimatedValue:  number | null;
   revenue:         number | null;
+  isDuplicate:     boolean;
   salespersonName: string | null;
   storeName:       string;
   enteredAt:       string;
