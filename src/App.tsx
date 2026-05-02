@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
-  Download, Menu, FileText, TrendingUp, Zap,
+  Download, Menu, TrendingUp, Zap,
 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
@@ -15,8 +15,6 @@ import { SalesGoalProgress }   from "@/components/dashboard/SalesGoalProgress";
 import { VendedorDashboard }   from "@/components/dashboard/VendedorDashboard";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
-import { OrcamentosPage }      from "@/components/orcamentos/OrcamentosPage";
-import { useOrcamentos }       from "@/contexts/OrcamentosContext";
 import { LoginPage }           from "@/components/auth/LoginPage";
 import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
@@ -29,7 +27,6 @@ import type { Period }    from "@/lib/types";
 
 const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
 type Page = "dashboard" | "stores" | "users";
-type DashboardTab = "metricas" | "orcamentos";
 
 export default function App() {
   const { isAuthenticated } = useAuth();
@@ -58,7 +55,6 @@ function AuthenticatedApp() {
   }, [user?.id]);
 
   const [page,           setPage]           = useState<Page>("dashboard");
-  const [dashboardTab,   setDashboardTab]   = useState<DashboardTab>("metricas");
   const [userMenuOpen,   setUserMenuOpen]   = useState(false);
   const [sidebarOpen,    setSidebarOpen]    = useState(false);
   const [selectedStores, setSelectedStores] = useState<string[]>(() =>
@@ -98,24 +94,7 @@ function AuthenticatedApp() {
     [effectiveStoreIds, period, isVendedor, user?.crmUserId]
   );
 
-  const { wonRevenueForPeriod, wonCountForPeriod } = useOrcamentos();
-
-  const { kpis: rawKpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
-
-  const orcamentosRevenue = wonRevenueForPeriod({ storeIds: effectiveStoreIds, period });
-  const orcamentosAllCount = wonCountForPeriod({ storeIds: effectiveStoreIds, period });
-  const orcamentosVendedorRevenue = isVendedor && user?.id
-    ? wonRevenueForPeriod({ storeIds: effectiveStoreIds, period, vendedorId: user.id })
-    : 0;
-  const orcamentosVendedorCount = isVendedor && user?.id
-    ? wonCountForPeriod({ storeIds: effectiveStoreIds, period, vendedorId: user.id })
-    : 0;
-
-  const kpis = useMemo(() => ({
-    ...rawKpis,
-    totalRevenue: rawKpis.totalRevenue + orcamentosRevenue,
-    wonDeals: rawKpis.wonDeals + (isVendedor ? orcamentosVendedorCount : orcamentosAllCount),
-  }), [rawKpis, orcamentosRevenue, orcamentosAllCount, orcamentosVendedorCount, isVendedor]);
+  const { kpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
 
   const storeMap = new Map(stores.map((s) => [s.id, s]));
   const filteredRanking = ranking
@@ -221,8 +200,8 @@ function AuthenticatedApp() {
             )}
           </div>
 
-          {/* Controls — só no dashboard > métricas e não vendedor */}
-          {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
+          {/* Controls — só no dashboard e não vendedor */}
+          {page === "dashboard" && !isVendedor && (
             <div className="flex items-center gap-2">
               <div className="hidden lg:block">
                 <StoreFilter
@@ -259,7 +238,7 @@ function AuthenticatedApp() {
         </header>
 
         {/* Mobile filters strip */}
-        {page === "dashboard" && dashboardTab === "metricas" && !isVendedor && (
+        {page === "dashboard" && !isVendedor && (
           <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-border bg-card/20 overflow-x-auto">
             <StoreFilter
               selected={selectedStores}
@@ -298,52 +277,30 @@ function AuthenticatedApp() {
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6">
             {page === "dashboard" ? (
               <div className="space-y-6">
-                {/* Sub-abas */}
-                <div className="flex items-center gap-0 border-b border-border">
-                  <DashTab
-                    active={dashboardTab === "metricas"}
-                    onClick={() => setDashboardTab("metricas")}
-                    icon={<TrendingUp className="h-3.5 w-3.5" />}
-                    label="Métricas"
-                  />
-                  {!isAnalistaCRM && (
-                    <DashTab
-                      active={dashboardTab === "orcamentos"}
-                      onClick={() => setDashboardTab("orcamentos")}
-                      icon={<FileText className="h-3.5 w-3.5" />}
-                      label="Orçamentos"
-                    />
-                  )}
-                </div>
-
-                {dashboardTab === "metricas" ? (
-                  isVendedor ? (
-                    <VendedorDashboard kpis={kpis} orcamentosRevenue={orcamentosVendedorRevenue} />
-                  ) : (
-                    <div className="space-y-5">
-                      {!isAdmin && (
-                        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm">
-                          <Store className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-muted-foreground">
-                            Visualizando{" "}
-                            <span className="text-foreground font-semibold">
-                              {allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}
-                            </span>{" "}
-                            sob sua responsabilidade
-                          </span>
-                        </div>
-                      )}
-                      <KPICards data={kpis} />
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <FunnelChart data={funnel} />
-                        <TrendChart  data={trend}  />
-                      </div>
-                      <StageTimeChart data={stageTimes} />
-                      <StoreRanking   data={filteredRanking} />
-                    </div>
-                  )
+                {isVendedor ? (
+                  <VendedorDashboard kpis={kpis} />
                 ) : (
-                  <OrcamentosPage />
+                  <div className="space-y-5">
+                    {!isAdmin && (
+                      <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm">
+                        <Store className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="text-muted-foreground">
+                          Visualizando{" "}
+                          <span className="text-foreground font-semibold">
+                            {allowedStoreIds.length} loja{allowedStoreIds.length !== 1 ? "s" : ""}
+                          </span>{" "}
+                          sob sua responsabilidade
+                        </span>
+                      </div>
+                    )}
+                    <KPICards data={kpis} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      <FunnelChart data={funnel} />
+                      <TrendChart  data={trend}  />
+                    </div>
+                    <StageTimeChart data={stageTimes} />
+                    <StoreRanking   data={filteredRanking} />
+                  </div>
                 )}
               </div>
             ) : page === "stores" ? (
@@ -526,23 +483,5 @@ function SidebarNavItemDisabled({ icon, label, badge }: {
   );
 }
 
-/* ─── Dashboard sub-tab ────────────────────────────────────────────────────── */
-function DashTab({ active, onClick, icon, label }: {
-  active:  boolean;
-  onClick: () => void;
-  icon:    React.ReactNode;
-  label:   string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {icon}
-      {label}
-      {active && <span className="absolute bottom-0 inset-x-0 h-[2px] bg-primary rounded-t-full" />}
-    </button>
-  );
-}
+// TrendingUp kept in imports — reserved for future dashboard sub-navigation
+void TrendingUp;

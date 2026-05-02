@@ -77,6 +77,13 @@ model Lead {
   firstResponseMinutes Int?      @map("first_response_minutes")
   salespersonCrmId     String?   @map("salesperson_crm_id")
   metadata             Json      @default("{}")
+  revenue              Float?
+  revenueCurrency      String?   @default("BRL") @map("revenue_currency")
+  revenueAt            DateTime? @map("revenue_at")
+  utmSource            String?   @map("utm_source")
+  utmMedium            String?   @map("utm_medium")
+  utmCampaign          String?   @map("utm_campaign")
+  utmContent           String?   @map("utm_content")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   store        Store        @relation(fields: [storeId], references: [id])
@@ -87,6 +94,8 @@ model Lead {
   @@index([tenantId, storeId])
   @@index([tenantId, currentStageId])
   @@index([tenantId, salespersonCrmId])
+  @@index([tenantId, revenueAt])
+  @@index([tenantId, utmCampaign])
   @@map("leads")
 }
 

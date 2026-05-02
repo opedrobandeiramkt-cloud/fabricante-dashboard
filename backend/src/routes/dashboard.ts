@@ -117,6 +117,35 @@ export async function dashboardRoutes(app: FastifyInstance) {
         ? parseFloat(((prevWonCount / prevEntryCount) * 100).toFixed(1))
         : 0;
 
+      // Faturamento e ticket médio
+      const [revenueLeads, prevRevenueLeads] = await Promise.all([
+        prisma.lead.findMany({
+          where: {
+            tenantId: tenant.id,
+            ...buildStoreFilter(storeIds),
+            ...(salesperson ? { salespersonCrmId: salesperson } : {}),
+            revenueAt: { gte: start, lte: end },
+            revenue:   { not: null },
+          },
+          select: { revenue: true },
+        }),
+        prisma.lead.findMany({
+          where: {
+            tenantId: tenant.id,
+            ...buildStoreFilter(storeIds),
+            ...(salesperson ? { salespersonCrmId: salesperson } : {}),
+            revenueAt: { gte: ps, lte: pe },
+            revenue:   { not: null },
+          },
+          select: { revenue: true },
+        }),
+      ]);
+
+      const totalRevenue     = revenueLeads.reduce((s, l) => s + (l.revenue ?? 0), 0);
+      const prevTotalRevenue = prevRevenueLeads.reduce((s, l) => s + (l.revenue ?? 0), 0);
+      const avgTicket        = revenueLeads.length > 0 ? Math.round(totalRevenue / revenueLeads.length) : 0;
+      const prevAvgTicket    = prevRevenueLeads.length > 0 ? Math.round(prevTotalRevenue / prevRevenueLeads.length) : 0;
+
       // Tempo médio de 1ª resposta
       const [frLeads, prevFrLeads] = await Promise.all([
         prisma.lead.findMany({
@@ -149,10 +178,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         wonDealsDelta:             delta(wonCount, prevWonCount),
         avgCycleDays,
         avgCycleDelta:             0,
-        totalRevenue:              0,
-        totalRevenueDelta:         0,
-        avgTicket:                 0,
-        avgTicketDelta:            0,
+        totalRevenue,
+        totalRevenueDelta:         delta(totalRevenue, prevTotalRevenue),
+        avgTicket,
+        avgTicketDelta:            delta(avgTicket, prevAvgTicket),
         avgFirstResponseMinutes,
         avgFirstResponseDelta:     delta(avgFirstResponseMinutes, prevAvgFirstResponse),
       });
@@ -323,13 +352,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
             occurredAt: { gte: start, lte: end },
           };
 
-          const [leadRows, wonRows, frLeads] = await Promise.all([
+          const [leadRows, wonRows, frLeads, revenueLeads] = await Promise.all([
             prisma.leadEvent.findMany({ where: { ...filter, fromStageId: null }, distinct: ["leadId"], select: { leadId: true } }),
             prisma.leadEvent.findMany({ where: { ...filter, toStageId: { in: wonStageIds } }, distinct: ["leadId"], select: { leadId: true } }),
             prisma.lead.findMany({
               where: { tenantId: tenant.id, storeId: store.id,
                 firstResponseMinutes: { not: null }, enteredAt: { gte: start, lte: end } },
               select: { firstResponseMinutes: true },
+            }),
+            prisma.lead.findMany({
+              where: { tenantId: tenant.id, storeId: store.id,
+                revenueAt: { gte: start, lte: end }, revenue: { not: null } },
+              select: { revenue: true },
             }),
           ]);
           const leads    = leadRows.length;
@@ -338,6 +372,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
           const avgFirstResponseMinutes = frLeads.length
             ? Math.round(frLeads.reduce((s, l) => s + l.firstResponseMinutes!, 0) / frLeads.length)
             : 0;
+          const revenue  = revenueLeads.reduce((s, l) => s + (l.revenue ?? 0), 0);
+          const avgTicket = revenueLeads.length > 0 ? Math.round(revenue / revenueLeads.length) : 0;
 
           return {
             store: {
@@ -349,8 +385,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
             leads,
             wonDeals,
             conversion:              leads > 0 ? parseFloat(((wonDeals / leads) * 100).toFixed(1)) : 0,
-            revenue:                 0,
-            avgTicket:               0,
+            revenue,
+            avgTicket,
             avgCycleDays:            0,
             avgFirstResponseMinutes,
             trend:                   [0, 0, 0, 0, 0, 0, 0],

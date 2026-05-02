@@ -19,10 +19,15 @@ const ingestBodySchema = {
     metadata: {
       type: "object",
       properties: {
-        value:       { type: "number" },
-        currency:    { type: "string" },
-        salesperson: { type: "string" },
-        source:      { type: "string" },
+        value:        { type: "number" },
+        currency:     { type: "string" },
+        salesperson:  { type: "string" },
+        source:       { type: "string" },
+        crmUserId:    { type: "string" },
+        utm_source:   { type: "string" },
+        utm_medium:   { type: "string" },
+        utm_campaign: { type: "string" },
+        utm_content:  { type: "string" },
       },
       additionalProperties: true,
     },
@@ -152,6 +157,12 @@ export async function ingestRoutes(app: FastifyInstance) {
           });
 
           const salespersonCrmId = (body.metadata?.crmUserId as string | undefined) ?? null;
+          const revenueValue     = body.metadata?.value != null ? (body.metadata.value as number) : null;
+          const revenueCurrency  = (body.metadata?.currency as string | undefined) ?? "BRL";
+          const utmSource        = (body.metadata?.utm_source as string | undefined) ?? null;
+          const utmMedium        = (body.metadata?.utm_medium as string | undefined) ?? null;
+          const utmCampaign      = (body.metadata?.utm_campaign as string | undefined) ?? null;
+          const utmContent       = (body.metadata?.utm_content as string | undefined) ?? null;
 
           const lead = await tx.lead.upsert({
             where: {
@@ -169,11 +180,28 @@ export async function ingestRoutes(app: FastifyInstance) {
               closedAt:         toStage.isWon || toStage.isLost ? occurredAt : null,
               salespersonCrmId,
               metadata:         (body.metadata ?? {}) as object,
+              revenue:          toStage.isWon ? revenueValue : null,
+              revenueCurrency:  toStage.isWon ? revenueCurrency : null,
+              revenueAt:        toStage.isWon ? occurredAt : null,
+              utmSource,
+              utmMedium,
+              utmCampaign,
+              utmContent,
             },
             update: {
               currentStageId: toStage.id,
               closedAt:       toStage.isWon || toStage.isLost ? occurredAt : null,
               ...(salespersonCrmId ? { salespersonCrmId } : {}),
+              ...(toStage.isWon && revenueValue != null ? {
+                revenue:         revenueValue,
+                revenueCurrency,
+                revenueAt:       occurredAt,
+              } : {}),
+              // Atribuição first-touch: só sobrescreve UTMs se ainda não capturados
+              ...(existingLead?.utmSource   == null && utmSource   ? { utmSource }   : {}),
+              ...(existingLead?.utmMedium   == null && utmMedium   ? { utmMedium }   : {}),
+              ...(existingLead?.utmCampaign == null && utmCampaign ? { utmCampaign } : {}),
+              ...(existingLead?.utmContent  == null && utmContent  ? { utmContent }  : {}),
             },
           });
 
