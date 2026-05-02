@@ -157,6 +157,13 @@ export interface LeadRow {
   enteredAt:       string;
 }
 
+export interface LeadsPage {
+  data:       LeadRow[];
+  total:      number;
+  page:       number;
+  totalPages: number;
+}
+
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export type Period = "7d" | "30d" | "90d" | "12m";

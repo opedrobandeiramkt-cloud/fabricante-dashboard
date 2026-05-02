@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function TrackeamentoPage({ filters }: Props) {
-  const { leads, loading } = useLeads(filters);
+  const { leads, total, totalPages, page, setPage, loading } = useLeads(filters);
 
   return (
     <div className="space-y-5">
@@ -19,12 +19,19 @@ export function TrackeamentoPage({ filters }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Leads Gerados</h2>
           <p className="text-xs text-muted-foreground">
-            {loading ? "Carregando..." : `${leads.length} lead${leads.length !== 1 ? "s" : ""} no período`}
+            {loading ? "Carregando..." : `${total} lead${total !== 1 ? "s" : ""} no período`}
           </p>
         </div>
       </div>
 
-      <LeadsTable leads={leads} loading={loading} />
+      <LeadsTable
+        leads={leads}
+        loading={loading}
+        total={total}
+        totalPages={totalPages}
+        page={page}
+        onPage={setPage}
+      />
     </div>
   );
 }

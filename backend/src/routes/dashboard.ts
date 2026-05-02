@@ -45,10 +45,11 @@ const querySchema = {
     period:      { type: "string", enum: ["7d", "30d", "90d", "12m"], default: "30d" },
     storeIds:    { type: "string" }, // CSV: "id1,id2"
     salesperson: { type: "string" }, // crmUserId do vendedor
+    page:        { type: "string" }, // página (1-indexed), usado pelo endpoint /leads
   },
 } as const;
 
-type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string };
+type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string; page?: string };
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
 
@@ -514,22 +515,30 @@ export async function dashboardRoutes(app: FastifyInstance) {
       );
 
       const { start, end } = getPeriodRange(period);
+      const PAGE_SIZE = 50;
+      const page      = Math.max(1, parseInt(request.query.page ?? "1", 10));
 
-      const leads = await prisma.lead.findMany({
-        where: {
-          tenantId:  tenant.id,
-          ...buildStoreFilter(storeIds),
-          enteredAt: { gte: start, lte: end },
-        },
-        include: {
-          currentStage: { select: { key: true, label: true } },
-          store:        { select: { name: true } },
-        },
-        orderBy: { enteredAt: "desc" },
-        take:    500,
-      });
+      const where = {
+        tenantId:  tenant.id,
+        ...buildStoreFilter(storeIds),
+        enteredAt: { gte: start, lte: end },
+      };
 
-      const result = leads.map((lead) => ({
+      const [leads, total] = await Promise.all([
+        prisma.lead.findMany({
+          where,
+          include: {
+            currentStage: { select: { key: true, label: true } },
+            store:        { select: { name: true } },
+          },
+          orderBy: { enteredAt: "desc" },
+          skip:    (page - 1) * PAGE_SIZE,
+          take:    PAGE_SIZE,
+        }),
+        prisma.lead.count({ where }),
+      ]);
+
+      const data = leads.map((lead) => ({
         id:              lead.id,
         contactName:     lead.contactName,
         contactPhone:    lead.contactPhone,
@@ -546,7 +555,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         enteredAt:       lead.enteredAt.toISOString(),
       }));
 
-      return reply.send(result);
+      return reply.send({ data, total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
     }
   );
 

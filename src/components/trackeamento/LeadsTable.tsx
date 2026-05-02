@@ -1,13 +1,14 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
 import type { LeadRow, LeadOrigem } from "@/lib/types";
 
 // ─── Origem badge ─────────────────────────────────────────────────────────────
 
 const ORIGEM_CONFIG: Record<LeadOrigem, { label: string; icon: React.ReactNode; className: string }> = {
-  meta:      { label: "Meta Ads",  icon: <FaFacebook  className="h-3 w-3" />, className: "bg-blue-500/10 text-blue-400 border-blue-500/20"    },
-  google:    { label: "Google",    icon: <FaGoogle    className="h-3 w-3" />, className: "bg-red-500/10 text-red-400 border-red-500/20"        },
-  instagram: { label: "Instagram", icon: <FaInstagram className="h-3 w-3" />, className: "bg-pink-500/10 text-pink-400 border-pink-500/20"     },
-  organico:  { label: "Orgânico",  icon: null,                                className: "bg-secondary text-muted-foreground border-border"     },
+  meta:      { label: "Meta Ads",  icon: <FaFacebook  className="h-3 w-3" />, className: "bg-blue-500/10 text-blue-400 border-blue-500/20"   },
+  google:    { label: "Google",    icon: <FaGoogle    className="h-3 w-3" />, className: "bg-red-500/10 text-red-400 border-red-500/20"       },
+  instagram: { label: "Instagram", icon: <FaInstagram className="h-3 w-3" />, className: "bg-pink-500/10 text-pink-400 border-pink-500/20"    },
+  organico:  { label: "Orgânico",  icon: null,                                className: "bg-secondary text-muted-foreground border-border"    },
 };
 
 function OrigemBadge({ origem }: { origem: LeadOrigem }) {
@@ -20,7 +21,7 @@ function OrigemBadge({ origem }: { origem: LeadOrigem }) {
   );
 }
 
-// ─── Formato ─────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
@@ -31,14 +32,60 @@ function formatBRL(value: number | null) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Paginação ────────────────────────────────────────────────────────────────
 
-interface Props {
-  leads:   LeadRow[];
-  loading: boolean;
+interface PaginationProps {
+  page:       number;
+  totalPages: number;
+  total:      number;
+  onPage:     (p: number) => void;
 }
 
-export function LeadsTable({ leads, loading }: Props) {
+function Pagination({ page, totalPages, total, onPage }: PaginationProps) {
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * 50 + 1;
+  const to   = Math.min(page * 50, total);
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-secondary/10">
+      <span className="text-xs text-muted-foreground">
+        {from}–{to} de {total} leads
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPage(page - 1)}
+          disabled={page === 1}
+          className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <span className="text-xs font-medium text-foreground px-2">
+          {page} / {totalPages}
+        </span>
+        <button
+          onClick={() => onPage(page + 1)}
+          disabled={page === totalPages}
+          className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tabela ───────────────────────────────────────────────────────────────────
+
+interface Props {
+  leads:      LeadRow[];
+  loading:    boolean;
+  total:      number;
+  totalPages: number;
+  page:       number;
+  onPage:     (p: number) => void;
+}
+
+export function LeadsTable({ leads, loading, total, totalPages, page, onPage }: Props) {
   if (loading) {
     return (
       <div className="card-base p-6 flex items-center justify-center text-muted-foreground text-sm">
@@ -128,11 +175,7 @@ export function LeadsTable({ leads, loading }: Props) {
           </tbody>
         </table>
       </div>
-      {leads.length === 500 && (
-        <div className="px-4 py-2.5 border-t border-border bg-secondary/20">
-          <p className="text-xs text-muted-foreground">Exibindo os 500 leads mais recentes do período.</p>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} total={total} onPage={onPage} />
     </div>
   );
 }
