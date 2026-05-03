@@ -167,6 +167,32 @@ export interface LeadsPage {
   totalPages: number;
 }
 
+// ─── CRM Config ───────────────────────────────────────────────────────────────
+
+export interface StageMapEntry {
+  tagId:    string;
+  stepId:   string;
+  dashKey:  string | null;
+}
+
+export interface StoreCrmConfig {
+  id:            string;
+  panelId:       string;
+  hasToken:      boolean;
+  stageMap:      StageMapEntry[];
+  stagePriority: string[];
+  version:       number;
+  updatedBy:     string | null;
+  updatedAt:     string;
+}
+
+export interface CrmTestResult {
+  ok:         boolean;
+  latencyMs:  number;
+  agentCount?: number;
+  error?:     string;
+}
+
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export type Period = "7d" | "30d" | "90d" | "12m";

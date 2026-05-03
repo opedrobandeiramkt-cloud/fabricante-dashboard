@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import {
   Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight,
   Store, MapPin, Phone, Mail, Link2, AlertTriangle, Copy, Check,
-  ChevronRight, ArrowLeft, Users,
+  ChevronRight, ArrowLeft, Users, Webhook,
 } from "lucide-react";
 import { StoreFormModal } from "./StoreFormModal";
+import { CrmConfigModal } from "./CrmConfigModal";
 import { useStores } from "@/hooks/useStores";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsersContext } from "@/contexts/UsersContext";
@@ -34,6 +35,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
   const [filterActive,        setFilterActive]        = useState<"all" | "active" | "inactive">("all");
   const [modalStore,          setModalStore]          = useState<StoreType | null | "new">(null);
   const [deleteTarget,        setDeleteTarget]        = useState<StoreType | null>(null);
+  const [crmStore,            setCrmStore]            = useState<StoreType | null>(null);
 
   // ── Dados derivados ──────────────────────────────────────────────────────────
 
@@ -284,6 +286,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
                 onEdit={() => setModalStore(store)}
                 onDelete={() => setDeleteTarget(store)}
                 onToggle={() => toggleActive(store.id)}
+                onCrmConfig={isAdmin ? () => setCrmStore(store) : undefined}
               />
             ))}
           </div>
@@ -297,6 +300,15 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
           initialStoreKind={modalStore !== "new" ? (modalStore.storeType ?? "splash") : "splash"}
           onSave={handleSave}
           onClose={() => setModalStore(null)}
+        />
+      )}
+
+      {/* Modal de configuração CRM */}
+      {isAdmin && crmStore && (
+        <CrmConfigModal
+          storeId={crmStore.id}
+          storeName={crmStore.name}
+          onClose={() => setCrmStore(null)}
         />
       )}
 
@@ -401,12 +413,14 @@ function StoreRow({
   onEdit,
   onDelete,
   onToggle,
+  onCrmConfig,
 }: {
-  store:    StoreType;
-  readOnly: boolean;
-  onEdit:   () => void;
-  onDelete: () => void;
-  onToggle: () => void;
+  store:        StoreType;
+  readOnly:     boolean;
+  onEdit:       () => void;
+  onDelete:     () => void;
+  onToggle:     () => void;
+  onCrmConfig?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-4 px-4 sm:px-5 py-3.5 transition-colors hover:bg-secondary/20 ${
@@ -459,6 +473,15 @@ function StoreRow({
       {/* Ações */}
       {!readOnly && (
         <div className="flex items-center gap-1 flex-shrink-0">
+          {onCrmConfig && (
+            <button
+              onClick={onCrmConfig}
+              title="Configurar CRM Helena"
+              className="h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Webhook className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={onToggle}
             title={store.active ? "Desativar" : "Ativar"}

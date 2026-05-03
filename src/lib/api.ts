@@ -1,4 +1,5 @@
 import type {
+  CrmTestResult,
   FunnelStageData,
   GoalData,
   KPIData,
@@ -6,6 +7,7 @@ import type {
   Period,
   StageTimeData,
   StoreRankingRow,
+  StoreCrmConfig,
   TrendPoint,
 } from "./types";
 import type { AppUser } from "./auth-types";
@@ -125,6 +127,21 @@ export const api = {
 
   deleteStore(id: string): Promise<{ ok: boolean }> {
     return apiFetch(`/api/stores/${id}`, { method: "DELETE" });
+  },
+
+  getCrmConfig(storeId: string): Promise<StoreCrmConfig> {
+    return apiFetch(`/api/stores/${storeId}/crm-config`);
+  },
+
+  saveCrmConfig(storeId: string, data: { panelId: string; helenaToken?: string; stageMap: unknown; stagePriority: unknown }): Promise<StoreCrmConfig> {
+    return apiFetch(`/api/stores/${storeId}/crm-config`, {
+      method: "PUT",
+      body:   JSON.stringify(data),
+    });
+  },
+
+  testCrmConfig(storeId: string): Promise<CrmTestResult> {
+    return apiFetch(`/api/stores/${storeId}/crm-config/test`, { method: "POST" });
   },
 
   // ── Orçamentos ───────────────────────────────────────────────────────────────
