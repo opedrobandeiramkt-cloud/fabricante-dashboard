@@ -45,7 +45,7 @@ try {
       cb(null, allowed);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // PATCH necessário para /leads/:id/origem
     allowedHeaders: ["Content-Type", "Authorization", "x-tenant-slug"],
   });
 
