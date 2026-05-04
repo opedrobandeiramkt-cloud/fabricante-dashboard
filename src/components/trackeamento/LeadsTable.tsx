@@ -39,6 +39,8 @@ function OrigemCell({ lead, onUpdate }: { lead: LeadRow; onUpdate: (id: string, 
     try {
       await api.updateLeadOrigem(lead.id, origem);
       onUpdate(lead.id, origem);
+    } catch {
+      setOpen(true);
     } finally {
       setSaving(false);
     }
@@ -181,7 +183,7 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage, on
     if (!derived) return;
     onLeadUpdate(id, {
       origemManual,
-      origem: origemManual ?? ORIGEM_CONFIG[derived.origem] ? derived.origem : "organico",
+      origem: origemManual ?? derived.origem,
     });
   }
 
