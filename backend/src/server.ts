@@ -11,6 +11,7 @@ import { authRoutes } from "./routes/auth.js";
 import { storeRoutes } from "./routes/stores.js";
 import { crmConfigRoutes } from "./routes/crm-config.js";
 import { quoteRoutes } from "./routes/quotes.js";
+import { trafegoRoutes } from "./routes/trafego.js";
 
 const port = Number(process.env.PORT ?? 3333);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -63,6 +64,7 @@ try {
   await app.register(storeRoutes);
   await app.register(crmConfigRoutes);
   await app.register(quoteRoutes);
+  await app.register(trafegoRoutes);
 
   app.get("/health", async () => ({ ok: true, uptime: process.uptime() }));
 

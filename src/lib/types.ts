@@ -202,3 +202,136 @@ export interface DashboardFilters {
   period:    Period;
   crmUserId?: string;  // se presente, filtra por vendedor
 }
+
+// ─── Tráfego Pago ─────────────────────────────────────────────────────────────
+
+export type AdPlatform = "google" | "meta";
+
+export interface AdPlatformMetrics {
+  investido: number;
+  leads: number;
+  cpl: number;
+  conversao?: number;
+  mensagens?: number;
+  cpm?: number;
+  clicks?: number;
+  impressions?: number;
+  temporal: Array<{ date: string; leads: number; investido: number }>;
+}
+
+export interface TrafegoFunnel {
+  impressions: number; impressionsDelta: number;
+  clicks: number; clicksDelta: number; ctr: number;
+  leads: number; leadsDelta: number;
+  cpl: number; cplDelta: number;
+  atendimentos: number; mql: number;
+  vendas: number; vendasDelta: number;
+  ticketMedio: number; ticketMedioDelta: number;
+  cps: number; cpsDelta: number;
+  percentVendas: number;
+}
+
+export interface TrafegoMacro {
+  investimento: number; investimentoDelta: number;
+  faturamento: number; faturamentoDelta: number;
+  roi: number; roiDelta: number;
+}
+
+export interface TrafegoTemporalPoint {
+  date: string;
+  investimento: number;
+  faturamento: number;
+  roi: number;
+  vendas: number;
+  cps: number;
+}
+
+export interface TrafegoOverview {
+  funnel: TrafegoFunnel;
+  macro: TrafegoMacro;
+  temporal: TrafegoTemporalPoint[];
+  google: AdPlatformMetrics;
+  meta: AdPlatformMetrics;
+}
+
+export interface DemographicSlice {
+  bucket: string;
+  leads: number;
+  spend: number;
+}
+
+export interface SearchTermRow {
+  term: string;
+  conversions: number;
+  cpl: number;
+  clicks: number;
+  impressions: number;
+}
+
+export interface AdCreativeRow {
+  name: string;
+  type: string;
+  subPlatform: string;
+  leads: number;
+  messages: number;
+  spend: number;
+  cpl: number;
+}
+
+export interface GeoMetricRow {
+  state: string;
+  leads: number;
+  spend: number;
+}
+
+export interface PlatformDetalhamento {
+  kpis: AdPlatformMetrics;
+  demographics: {
+    age: DemographicSlice[];
+    gender: DemographicSlice[];
+    device: DemographicSlice[];
+  };
+  searchTerms?: SearchTermRow[];
+  geo?: GeoMetricRow[];
+  topAds?: AdCreativeRow[];
+  leadsBySubPlatform?: Array<{ platform: string; leads: number }>;
+}
+
+export interface TrafegoDetalhamento {
+  google: PlatformDetalhamento;
+  meta: PlatformDetalhamento;
+}
+
+export interface MonthlyHistoricoPoint {
+  month: string;
+  investimento: number;
+  leads: number;
+  vendas: number;
+  faturamento: number;
+  roi: number;
+  google: number;
+  meta: number;
+}
+
+export interface TrafegoKpiAnual {
+  atual: number;
+  anterior: number;
+  goal: number | null;
+}
+
+export interface TrafegoHistorico {
+  kpisAnuais: {
+    investimento: TrafegoKpiAnual;
+    leads: TrafegoKpiAnual;
+    vendas: TrafegoKpiAnual;
+    faturamento: TrafegoKpiAnual;
+    roi: { atual: number; anterior: number };
+  };
+  mensal: MonthlyHistoricoPoint[];
+  leadsPorCanal: Array<{
+    month: string; google: number; meta: number; instagram: number;
+    organico: number; indicacao: number; evento: number; total: number;
+  }>;
+}
+
+export type TrafegoTab = "visao-geral" | "detalhamento" | "historico" | "leads";

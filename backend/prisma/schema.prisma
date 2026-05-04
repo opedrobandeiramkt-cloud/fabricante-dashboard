@@ -21,6 +21,12 @@ model Tenant {
   leadEvents   LeadEvent[]
   users        User[]
   quotes       Quote[]
+  adMetrics      AdMetricDaily[]
+  adDemographics AdDemographic[]
+  adSearchTerms  AdSearchTerm[]
+  adCreatives    AdCreative[]
+  adGeoMetrics   AdGeoMetric[]
+  trafficGoals   TrafficGoal[]
 
   @@map("tenants")
 }
@@ -40,6 +46,12 @@ model Store {
   leadEvents LeadEvent[]
   quotes     Quote[]
   crmConfigs StoreCrmConfig[]
+  adMetrics      AdMetricDaily[]
+  adDemographics AdDemographic[]
+  adSearchTerms  AdSearchTerm[]
+  adCreatives    AdCreative[]
+  adGeoMetrics   AdGeoMetric[]
+  trafficGoals   TrafficGoal[]
 
   @@unique([tenantId, externalId])
   @@index([tenantId])
@@ -247,4 +259,132 @@ model FailedEvent {
 
   @@index([resolved, receivedAt(sort: Desc)])
   @@map("failed_events")
+}
+
+// ─── Métricas diárias de Ads (Google + Meta) ──────────────────────────────────
+model AdMetricDaily {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  storeId     String   @map("store_id")
+  platform    String   // "google" | "meta"
+  date        DateTime @db.Date
+  spend       Float    @default(0)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  leads       Int      @default(0)
+  sales       Int      @default(0)
+  revenue     Float    @default(0)
+  messages    Int      @default(0) // Meta only
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@unique([tenantId, storeId, platform, date])
+  @@index([tenantId, storeId, date(sort: Desc)])
+  @@index([tenantId, platform, date(sort: Desc)])
+  @@map("ad_metrics_daily")
+}
+
+// ─── Segmentação demográfica de Ads ──────────────────────────────────────────
+model AdDemographic {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  storeId   String   @map("store_id")
+  platform  String   // "google" | "meta"
+  date      DateTime @db.Date
+  dimension String   // "age" | "gender" | "device"
+  bucket    String   // ex: "18-24", "male", "mobile"
+  leads     Int      @default(0)
+  spend     Float    @default(0)
+  clicks    Int      @default(0)
+  impressions Int    @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@index([tenantId, storeId, platform, date(sort: Desc)])
+  @@index([tenantId, platform, dimension])
+  @@map("ad_demographics")
+}
+
+// ─── Termos de pesquisa (Google Ads) ─────────────────────────────────────────
+model AdSearchTerm {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  storeId     String   @map("store_id")
+  periodStart DateTime @map("period_start") @db.Date
+  periodEnd   DateTime @map("period_end")   @db.Date
+  term        String
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  cost        Float    @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@index([tenantId, storeId, periodStart(sort: Desc)])
+  @@map("ad_search_terms")
+}
+
+// ─── Criativos de anúncio (Meta Ads) ─────────────────────────────────────────
+model AdCreative {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  storeId     String   @map("store_id")
+  externalId  String   @map("external_id")
+  name        String
+  type        String   @default("image") // "image" | "video" | "carousel"
+  subPlatform String?  @map("sub_platform") // "facebook" | "instagram" | "reels"
+  leads       Int      @default(0)
+  messages    Int      @default(0)
+  spend       Float    @default(0)
+  ctr         Float    @default(0)
+  periodStart DateTime @map("period_start") @db.Date
+  periodEnd   DateTime @map("period_end")   @db.Date
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@index([tenantId, storeId, periodStart(sort: Desc)])
+  @@map("ad_creatives")
+}
+
+// ─── Métricas geográficas de Ads ──────────────────────────────────────────────
+model AdGeoMetric {
+  id       String   @id @default(uuid())
+  tenantId String   @map("tenant_id")
+  storeId  String   @map("store_id")
+  platform String   // "google" | "meta"
+  date     DateTime @db.Date
+  state    String   // UF de 2 letras (ex: "PR", "SP")
+  leads    Int      @default(0)
+  spend    Float    @default(0)
+  clicks   Int      @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@index([tenantId, storeId, platform, date(sort: Desc)])
+  @@index([tenantId, platform, state])
+  @@map("ad_geo_metrics")
+}
+
+// ─── Metas anuais de tráfego por loja ────────────────────────────────────────
+model TrafficGoal {
+  id             String @id @default(uuid())
+  tenantId       String @map("tenant_id")
+  storeId        String @map("store_id")
+  year           Int
+  investmentGoal Float  @default(0) @map("investment_goal")
+  leadsGoal      Int    @default(0) @map("leads_goal")
+  salesGoal      Int    @default(0) @map("sales_goal")
+  revenueGoal    Float  @default(0) @map("revenue_goal")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+
+  @@unique([tenantId, storeId, year])
+  @@index([tenantId, storeId])
+  @@map("traffic_goals")
 }

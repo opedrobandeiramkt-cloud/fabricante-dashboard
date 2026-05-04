@@ -9,6 +9,9 @@ import type {
   StoreRankingRow,
   StoreCrmConfig,
   TrendPoint,
+  TrafegoOverview,
+  TrafegoDetalhamento,
+  TrafegoHistorico,
 } from "./types";
 import type { AppUser } from "./auth-types";
 import type { SavedQuote } from "./pool-data";
@@ -170,5 +173,23 @@ export const api = {
 
   markQuoteLost(id: string): Promise<SavedQuote> {
     return apiFetch(`/api/quotes/${id}/lost`, { method: "PATCH" });
+  },
+
+  // ── Tráfego Pago ─────────────────────────────────────────────────────────────
+
+  trafegoOverview(storeIds: string[], period: Period): Promise<TrafegoOverview> {
+    const params = buildParams(storeIds, period);
+    return apiFetch(`/api/trafego/overview?${params}`);
+  },
+
+  trafegoDetalhamento(storeIds: string[], period: Period): Promise<TrafegoDetalhamento> {
+    const params = buildParams(storeIds, period);
+    return apiFetch(`/api/trafego/detalhamento?${params}`);
+  },
+
+  trafegoHistorico(storeIds: string[], year: number): Promise<TrafegoHistorico> {
+    const params = new URLSearchParams({ year: String(year) });
+    if (storeIds.length > 0) params.set("storeIds", storeIds.join(","));
+    return apiFetch(`/api/trafego/historico?${params}`);
   },
 };
