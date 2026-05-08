@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import type { CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays } from "lucide-react";
 import type { Period } from "@/lib/types";
 
@@ -62,12 +64,16 @@ export function DateRangePicker({ period, dateFrom, dateTo, onChange }: Props) {
   const [pickingEnd,  setPickingEnd]  = useState(false);
   const [hovered,     setHovered]     = useState<string | null>(null);
 
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
 
   useEffect(() => {
     if (!open) return;
     function onMouseDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const inTrigger = triggerRef.current?.contains(e.target as Node);
+      const inPanel   = panelRef.current?.contains(e.target as Node);
+      if (!inTrigger && !inPanel) setOpen(false);
     }
     document.addEventListener("mousedown", onMouseDown);
     return () => document.removeEventListener("mousedown", onMouseDown);
@@ -80,6 +86,17 @@ export function DateRangePicker({ period, dateFrom, dateTo, onChange }: Props) {
     setHovered(null);
     const base = dateFrom ? fromYMD(dateFrom) : new Date();
     setViewDate(new Date(base.getFullYear(), base.getMonth(), 1));
+
+    // Posiciona o painel relativo ao botão (fixed, escapa overflow-hidden)
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelStyle({
+        position: "fixed",
+        top:  rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+
     setOpen(true);
   }
 
@@ -151,21 +168,12 @@ export function DateRangePicker({ period, dateFrom, dateTo, onChange }: Props) {
     ? `Início: ${fromYMD(pendingFrom).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`
     : "Selecione a data inicial";
 
-  return (
-    <div ref={ref} className="relative">
-      {/* ── Botão disparador ── */}
-      <button
-        onClick={openPicker}
-        className="flex items-center gap-2 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors whitespace-nowrap"
-      >
-        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        <span>{displayLabel(period, dateFrom, dateTo)}</span>
-        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {/* ── Painel ── */}
-      {open && (
-        <div className="absolute top-full mt-2 right-0 z-50 flex bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+  const panel = open && (
+    <div
+      ref={panelRef}
+      style={panelStyle}
+      className="z-[9999] flex bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+    >
 
           {/* Atalhos */}
           <div className="w-44 border-r border-border p-2 flex flex-col gap-0.5 flex-shrink-0">
@@ -295,7 +303,23 @@ export function DateRangePicker({ period, dateFrom, dateTo, onChange }: Props) {
             </div>
           </div>
         </div>
-      )}
-    </div>
+  );
+
+  return (
+    <>
+      {/* ── Botão disparador ── */}
+      <button
+        ref={triggerRef}
+        onClick={openPicker}
+        className="flex items-center gap-2 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors whitespace-nowrap"
+      >
+        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        <span>{displayLabel(period, dateFrom, dateTo)}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* ── Painel via portal — escapa overflow-hidden dos containers pais ── */}
+      {panel && createPortal(panel, document.body)}
+    </>
   );
 }
