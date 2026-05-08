@@ -56,8 +56,8 @@ export function BrazilGeoMap({ data }: Props) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        Distribuição Geográfica
+      <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+        Leads por Estado
       </p>
       <div className="overflow-x-auto">
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="mx-auto">
@@ -102,7 +102,6 @@ export function BrazilGeoMap({ data }: Props) {
           })}
         </svg>
       </div>
-      {/* Legenda de intensidade */}
       <div className="flex items-center gap-2 mt-2 justify-center">
         <span className="text-xs text-muted-foreground">Menos leads</span>
         <div

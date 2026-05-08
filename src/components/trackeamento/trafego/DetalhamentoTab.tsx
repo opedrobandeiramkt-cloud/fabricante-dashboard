@@ -2,33 +2,49 @@ import { FaGoogle } from "react-icons/fa";
 import { FaMeta } from "react-icons/fa6";
 import type { DashboardFilters, AdPlatformMetrics } from "@/lib/types";
 import { useTrafego } from "@/hooks/useTrafego";
-import { DemographicCharts } from "./DemographicCharts";
+import { AgeChart, GenderChart, DeviceChart } from "./DemographicCharts";
 import { SearchTermsTable } from "./SearchTermsTable";
 import { BrazilGeoMap } from "./BrazilGeoMap";
 import { TopAdsTable } from "./TopAdsTable";
 import { LeadsByMetaPlatform } from "./LeadsByMetaPlatform";
-import { fmtBRL, fmtNum, fmtPct } from "./fmt";
+import { fmtBRL, fmtNum } from "./fmt";
 
 interface Props {
   filters: DashboardFilters;
 }
 
-function KpiGrid({ metrics }: { metrics: AdPlatformMetrics }) {
-  const items = [
-    { label: "Investimento",  value: fmtBRL(metrics.investido) },
-    { label: "Leads",         value: fmtNum(metrics.leads) },
-    { label: "CPL",           value: fmtBRL(metrics.cpl) },
-    ...(metrics.clicks !== undefined    ? [{ label: "Cliques",     value: fmtNum(metrics.clicks) }]    : []),
-    ...(metrics.impressions !== undefined ? [{ label: "Impressões", value: fmtNum(metrics.impressions) }] : []),
-    ...(metrics.mensagens !== undefined ? [{ label: "Mensagens",   value: fmtNum(metrics.mensagens) }] : []),
-    ...(metrics.conversao !== undefined ? [{ label: "Conversão",   value: fmtPct(metrics.conversao) }]  : []),
+interface KpiItem {
+  label: string;
+  value: string;
+}
+
+function buildGoogleKpis(m: AdPlatformMetrics): KpiItem[] {
+  return [
+    { label: "Investido",      value: fmtBRL(m.investido) },
+    { label: "Leads",          value: fmtNum(m.leads) },
+    { label: "Custo por Lead", value: m.leads > 0 ? fmtBRL(m.cpl) : "—" },
+    { label: "Cliques",        value: fmtNum(m.clicks ?? 0) },
+    { label: "Impressões",     value: fmtNum(m.impressions ?? 0) },
   ];
+}
+
+function buildMetaKpis(m: AdPlatformMetrics): KpiItem[] {
+  return [
+    { label: "Investido",          value: fmtBRL(m.investido) },
+    { label: "Todos os Leads",     value: fmtNum(m.leads) },
+    { label: "C/ Todos os Leads",  value: m.leads > 0 ? fmtBRL(m.cpl) : "—" },
+    { label: "Mensagens",          value: fmtNum(m.mensagens ?? 0) },
+    { label: "C/ Mensagem",        value: (m.mensagens ?? 0) > 0 ? fmtBRL(m.conversao ?? 0) : "—" },
+  ];
+}
+
+function KpiRow({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+    <div className="grid grid-cols-5 gap-2 mb-5">
       {items.map(({ label, value }) => (
-        <div key={label} className="card-base p-3">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-sm font-bold text-foreground mt-0.5">{value}</p>
+        <div key={label} className="card-base px-3 py-2.5">
+          <p className="text-[9px] text-muted-foreground leading-tight">{label}</p>
+          <p className="text-lg font-bold text-foreground mt-0.5 leading-tight">{value}</p>
         </div>
       ))}
     </div>
@@ -53,12 +69,19 @@ function Skeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
       {[0, 1].map((i) => (
-        <div key={i} className="space-y-4">
-          <div className="h-8 bg-secondary rounded w-1/3" />
-          <div className="grid grid-cols-3 gap-2">
-            {[0, 1, 2].map((j) => <div key={j} className="h-16 bg-secondary rounded" />)}
+        <div key={i} className="card-base p-5 space-y-4">
+          <div className="h-7 bg-secondary rounded w-1/3" />
+          <div className="grid grid-cols-5 gap-2">
+            {[0, 1, 2, 3, 4].map((j) => <div key={j} className="h-14 bg-secondary rounded" />)}
           </div>
-          <div className="h-48 bg-secondary rounded" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-36 bg-secondary rounded" />
+            <div className="h-36 bg-secondary rounded" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-36 bg-secondary rounded" />
+            <div className="h-48 bg-secondary rounded" />
+          </div>
           <div className="h-40 bg-secondary rounded" />
         </div>
       ))}
@@ -81,35 +104,46 @@ export function DetalhamentoTab({ filters }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Google */}
-      <div className="space-y-5">
+      {/* ── Google Ads ── */}
+      <div className="card-base p-5 space-y-5">
         <PlatformHeader name="Google Ads" icon={<FaGoogle className="h-4 w-4" />} accent="#4285F4" />
-        <KpiGrid metrics={google.kpis} />
-        <DemographicCharts
-          age={google.demographics.age}
-          gender={google.demographics.gender}
-          device={google.demographics.device}
-        />
-        {google.searchTerms && google.searchTerms.length > 0 && (
-          <SearchTermsTable rows={google.searchTerms} />
-        )}
-        {google.geo && google.geo.length > 0 && <BrazilGeoMap data={google.geo} />}
+        <KpiRow items={buildGoogleKpis(google.kpis)} />
+
+        {/* Linha 1: Leads por Idade | Leads por Gênero */}
+        <div className="grid grid-cols-2 gap-4">
+          <AgeChart data={google.demographics.age} />
+          <GenderChart data={google.demographics.gender} />
+        </div>
+
+        {/* Linha 2: Leads por Dispositivo | Termos de Pesquisa */}
+        <div className="grid grid-cols-2 gap-4 items-start">
+          <DeviceChart data={google.demographics.device} />
+          <SearchTermsTable rows={google.searchTerms ?? []} />
+        </div>
+
+        {/* Linha 3: Leads por Estado */}
+        <BrazilGeoMap data={google.geo ?? []} />
       </div>
 
-      {/* Meta */}
-      <div className="space-y-5">
+      {/* ── Meta Ads ── */}
+      <div className="card-base p-5 space-y-5">
         <PlatformHeader name="Meta Ads" icon={<FaMeta className="h-4 w-4" />} accent="#1877F2" />
-        <KpiGrid metrics={meta.kpis} />
-        <DemographicCharts
-          age={meta.demographics.age}
-          gender={meta.demographics.gender}
-          device={meta.demographics.device}
-        />
-        {meta.leadsBySubPlatform && meta.leadsBySubPlatform.length > 0 && (
-          <LeadsByMetaPlatform data={meta.leadsBySubPlatform} />
-        )}
-        {meta.topAds && meta.topAds.length > 0 && <TopAdsTable ads={meta.topAds} />}
-        {meta.geo && meta.geo.length > 0 && <BrazilGeoMap data={meta.geo} />}
+        <KpiRow items={buildMetaKpis(meta.kpis)} />
+
+        {/* Linha 1: Leads por Idade | Leads por Gênero */}
+        <div className="grid grid-cols-2 gap-4">
+          <AgeChart data={meta.demographics.age} />
+          <GenderChart data={meta.demographics.gender} />
+        </div>
+
+        {/* Linha 2: Leads por Dispositivo | Melhores Anúncios */}
+        <div className="grid grid-cols-2 gap-4 items-start">
+          <DeviceChart data={meta.demographics.device} />
+          <TopAdsTable ads={meta.topAds ?? []} />
+        </div>
+
+        {/* Linha 3: Leads por Plataforma */}
+        <LeadsByMetaPlatform data={meta.leadsBySubPlatform ?? []} />
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
 import type { DashboardFilters } from "@/lib/types";
 import { useTrafego } from "@/hooks/useTrafego";
 import { MacroFunnel } from "./MacroFunnel";
-import { IndicadoresMacroCards } from "./IndicadoresMacroCards";
-import { IndicadoresTemporalChart } from "./IndicadoresTemporalChart";
-import { PlatformSplit } from "./PlatformSplit";
+import { IndicadoresMacroPanel } from "./IndicadoresMacroPanel";
+import { VisaoGeralTrafego } from "./VisaoGeralTrafego";
 
 interface Props {
   filters: DashboardFilters;
@@ -12,20 +11,14 @@ interface Props {
 function Skeleton() {
   return (
     <div className="space-y-5 animate-pulse">
-      <div className="grid grid-cols-3 gap-4">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-36 bg-secondary rounded-xl" />
-        ))}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3 h-72 bg-secondary rounded-xl" />
+        <div className="lg:col-span-2 h-72 bg-secondary rounded-xl" />
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[0, 1, 2, 3, 4, 5].map(i => (
           <div key={i} className="h-28 bg-secondary rounded-xl" />
         ))}
-      </div>
-      <div className="h-64 bg-secondary rounded-xl" />
-      <div className="grid grid-cols-2 gap-4">
-        <div className="h-64 bg-secondary rounded-xl" />
-        <div className="h-64 bg-secondary rounded-xl" />
       </div>
     </div>
   );
@@ -44,18 +37,26 @@ export function VisaoGeralTab({ filters }: Props) {
 
   return (
     <div className="space-y-5">
-      <MacroFunnel funnel={overview.funnel} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <IndicadoresMacroCards macro={overview.macro} />
+      {/* Topo: Jornada de Compra (esq) | Indicadores Macro (dir) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+        <div className="lg:col-span-3">
+          <MacroFunnel funnel={overview.funnel} />
         </div>
-        <div className="lg:col-span-1">
-          <IndicadoresTemporalChart temporal={overview.temporal} />
+        <div className="lg:col-span-2">
+          <IndicadoresMacroPanel
+            macro={overview.macro}
+            temporal={overview.temporal}
+            google={overview.google}
+            meta={overview.meta}
+          />
         </div>
       </div>
 
-      <PlatformSplit google={overview.google} meta={overview.meta} />
+      {/* Baixo: Visão Geral do Tráfego — 6 cards com sparkline */}
+      <VisaoGeralTrafego
+        google={overview.google}
+        meta={overview.meta}
+      />
     </div>
   );
 }
