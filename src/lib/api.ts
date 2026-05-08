@@ -35,40 +35,52 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function buildParams(storeIds: string[], period: Period, salesperson?: string): string {
-  const params = new URLSearchParams({ period });
+function buildParams(
+  storeIds: string[],
+  period: Period,
+  salesperson?: string,
+  dateFrom?: string,
+  dateTo?: string,
+): string {
+  const params = new URLSearchParams();
+  if (period === "custom" && dateFrom && dateTo) {
+    params.set("from", dateFrom);
+    params.set("to",   dateTo);
+  } else {
+    params.set("period", period);
+  }
   if (storeIds.length > 0) params.set("storeIds", storeIds.join(","));
-  if (salesperson)         params.set("salesperson", salesperson);
+  if (salesperson)          params.set("salesperson", salesperson);
   return params.toString();
 }
 
 export const api = {
-  kpis(storeIds: string[], period: Period, salesperson?: string): Promise<KPIData> {
-    return apiFetch(`/api/dashboard/kpis?${buildParams(storeIds, period, salesperson)}`);
+  kpis(storeIds: string[], period: Period, salesperson?: string, dateFrom?: string, dateTo?: string): Promise<KPIData> {
+    return apiFetch(`/api/dashboard/kpis?${buildParams(storeIds, period, salesperson, dateFrom, dateTo)}`);
   },
 
-  funnel(storeIds: string[], period: Period, salesperson?: string): Promise<FunnelStageData[]> {
-    return apiFetch(`/api/dashboard/funnel?${buildParams(storeIds, period, salesperson)}`);
+  funnel(storeIds: string[], period: Period, salesperson?: string, dateFrom?: string, dateTo?: string): Promise<FunnelStageData[]> {
+    return apiFetch(`/api/dashboard/funnel?${buildParams(storeIds, period, salesperson, dateFrom, dateTo)}`);
   },
 
-  trend(storeIds: string[], period: Period, salesperson?: string): Promise<TrendPoint[]> {
-    return apiFetch(`/api/dashboard/trend?${buildParams(storeIds, period, salesperson)}`);
+  trend(storeIds: string[], period: Period, salesperson?: string, dateFrom?: string, dateTo?: string): Promise<TrendPoint[]> {
+    return apiFetch(`/api/dashboard/trend?${buildParams(storeIds, period, salesperson, dateFrom, dateTo)}`);
   },
 
-  ranking(storeIds: string[], period: Period): Promise<StoreRankingRow[]> {
-    return apiFetch(`/api/dashboard/ranking?${buildParams(storeIds, period)}`);
+  ranking(storeIds: string[], period: Period, dateFrom?: string, dateTo?: string): Promise<StoreRankingRow[]> {
+    return apiFetch(`/api/dashboard/ranking?${buildParams(storeIds, period, undefined, dateFrom, dateTo)}`);
   },
 
   stores(): Promise<{ id: string; name: string; city: string; state: string; externalId?: string; storeType?: string }[]> {
     return apiFetch("/api/dashboard/stores");
   },
 
-  stageTime(storeIds: string[], period: Period, salesperson?: string): Promise<StageTimeData[]> {
-    return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period, salesperson)}`);
+  stageTime(storeIds: string[], period: Period, salesperson?: string, dateFrom?: string, dateTo?: string): Promise<StageTimeData[]> {
+    return apiFetch(`/api/dashboard/stage-time?${buildParams(storeIds, period, salesperson, dateFrom, dateTo)}`);
   },
 
-  leads(storeIds: string[], period: Period, page = 1): Promise<LeadsPage> {
-    const params = buildParams(storeIds, period);
+  leads(storeIds: string[], period: Period, page = 1, dateFrom?: string, dateTo?: string): Promise<LeadsPage> {
+    const params = buildParams(storeIds, period, undefined, dateFrom, dateTo);
     return apiFetch(`/api/dashboard/leads?${params}&page=${page}`);
   },
 
@@ -177,13 +189,13 @@ export const api = {
 
   // ── Tráfego Pago ─────────────────────────────────────────────────────────────
 
-  trafegoOverview(storeIds: string[], period: Period): Promise<TrafegoOverview> {
-    const params = buildParams(storeIds, period);
+  trafegoOverview(storeIds: string[], period: Period, dateFrom?: string, dateTo?: string): Promise<TrafegoOverview> {
+    const params = buildParams(storeIds, period, undefined, dateFrom, dateTo);
     return apiFetch(`/api/trafego/overview?${params}`);
   },
 
-  trafegoDetalhamento(storeIds: string[], period: Period): Promise<TrafegoDetalhamento> {
-    const params = buildParams(storeIds, period);
+  trafegoDetalhamento(storeIds: string[], period: Period, dateFrom?: string, dateTo?: string): Promise<TrafegoDetalhamento> {
+    const params = buildParams(storeIds, period, undefined, dateFrom, dateTo);
     return apiFetch(`/api/trafego/detalhamento?${params}`);
   },
 

@@ -195,11 +195,13 @@ export interface CrmTestResult {
 
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
-export type Period = "7d" | "30d" | "90d" | "12m";
+export type Period = "7d" | "30d" | "90d" | "12m" | "custom";
 
 export interface DashboardFilters {
   storeIds:  string[]; // [] = todas
   period:    Period;
+  dateFrom?: string;   // "YYYY-MM-DD" — só quando period === "custom"
+  dateTo?:   string;   // "YYYY-MM-DD" — só quando period === "custom"
   crmUserId?: string;  // se presente, filtra por vendedor
 }
 

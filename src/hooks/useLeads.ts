@@ -18,7 +18,7 @@ export function useLeads(filters: DashboardFilters) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  useEffect(() => { setPage(1); }, [filters.storeIds.join(","), filters.period]);
+  useEffect(() => { setPage(1); }, [filters.storeIds.join(","), filters.period, filters.dateFrom, filters.dateTo]);
 
   useEffect(() => {
     if (!USE_API) { setLeads([]); return; }
@@ -26,7 +26,7 @@ export function useLeads(filters: DashboardFilters) {
     setLoading(true);
     setError(null);
 
-    api.leads(filters.storeIds, filters.period, page)
+    api.leads(filters.storeIds, filters.period, page, filters.dateFrom, filters.dateTo)
       .then((res) => {
         if (!mountedRef.current) return;
         setLeads(res.data);
@@ -38,7 +38,7 @@ export function useLeads(filters: DashboardFilters) {
         setError(e instanceof Error ? e.message : "Erro ao carregar leads");
       })
       .finally(() => { if (mountedRef.current) setLoading(false); });
-  }, [filters.storeIds.join(","), filters.period, page]);
+  }, [filters.storeIds.join(","), filters.period, filters.dateFrom, filters.dateTo, page]);
 
   const updateLead = useCallback((id: string, origemManual: LeadOrigem | null) => {
     setLeads((prev) => prev.map((l) => {

@@ -64,7 +64,7 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
       return;
     }
 
-    const { storeIds, period, crmUserId } = filters;
+    const { storeIds, period, dateFrom, dateTo, crmUserId } = filters;
 
     async function fetchAll(isPolling = false) {
       if (!isPolling) setLoading(true);
@@ -75,11 +75,11 @@ export function useDashboard(filters: DashboardFilters): DashboardData {
         : Promise.resolve(null);
 
       const [kpis, funnel, trend, ranking, stageTimes, goal] = await Promise.allSettled([
-        api.kpis(storeIds, period, crmUserId),
-        api.funnel(storeIds, period, crmUserId),
-        api.trend(storeIds, period, crmUserId),
-        api.ranking(storeIds, period),
-        api.stageTime(storeIds, period, crmUserId),
+        api.kpis(storeIds, period, crmUserId, dateFrom, dateTo),
+        api.funnel(storeIds, period, crmUserId, dateFrom, dateTo),
+        api.trend(storeIds, period, crmUserId, dateFrom, dateTo),
+        api.ranking(storeIds, period, dateFrom, dateTo),
+        api.stageTime(storeIds, period, crmUserId, dateFrom, dateTo),
         goalPromise,
       ]);
 

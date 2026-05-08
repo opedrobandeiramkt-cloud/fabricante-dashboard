@@ -13,6 +13,7 @@ import { StoreFilter }         from "@/components/dashboard/StoreFilter";
 import { StageTimeChart }      from "@/components/dashboard/StageTimeChart";
 import { SalesGoalProgress }   from "@/components/dashboard/SalesGoalProgress";
 import { VendedorDashboard }   from "@/components/dashboard/VendedorDashboard";
+import { DateRangePicker }     from "@/components/dashboard/DateRangePicker";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
 import { TrackeamentoPage }    from "@/components/trackeamento/TrackeamentoPage";
@@ -20,13 +21,11 @@ import { LoginPage }           from "@/components/auth/LoginPage";
 import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
 import { useDashboard }   from "@/hooks/useDashboard";
-import { PERIOD_LABELS } from "@/lib/constants";
 import { useStores } from "@/contexts/StoresContext";
 import { useUsersContext } from "@/contexts/UsersContext";
 import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
 
-const PERIODS: Period[] = ["7d", "30d", "90d", "12m"];
 type Page = "dashboard" | "stores" | "users" | "trackeamento";
 
 export default function App() {
@@ -61,7 +60,15 @@ function AuthenticatedApp() {
   const [selectedStores, setSelectedStores] = useState<string[]>(() =>
     isAdmin ? [] : allowedStoreIds
   );
-  const [period, setPeriod] = useState<Period>("30d");
+  const [period,   setPeriod]   = useState<Period>("30d");
+  const [dateFrom, setDateFrom] = useState<string | undefined>(undefined);
+  const [dateTo,   setDateTo]   = useState<string | undefined>(undefined);
+
+  function handlePeriodChange(p: Period, from?: string, to?: string) {
+    setPeriod(p);
+    setDateFrom(p === "custom" ? from : undefined);
+    setDateTo(p === "custom" ? to   : undefined);
+  }
 
   function handleStoreChange(ids: string[]) {
     if (isAdmin) {
@@ -90,9 +97,10 @@ function AuthenticatedApp() {
     () => ({
       storeIds:  effectiveStoreIds,
       period,
+      ...(period === "custom" ? { dateFrom, dateTo } : {}),
       ...(isVendedor && user?.crmUserId ? { crmUserId: user.crmUserId } : {}),
     }),
-    [effectiveStoreIds, period, isVendedor, user?.crmUserId]
+    [effectiveStoreIds, period, dateFrom, dateTo, isVendedor, user?.crmUserId]
   );
 
   const { kpis, funnel, trend, ranking, stageTimes, goalData } = useDashboard(filters);
@@ -113,8 +121,13 @@ function AuthenticatedApp() {
     ? "Todas as lojas"
     : stores.filter((s) => selectedStores.includes(s.id)).map((s) => s.name).join(", ");
 
+  const PRESET_LABELS: Record<string, string> = { "7d": "7 dias", "30d": "30 dias", "90d": "90 dias", "12m": "12 meses" };
+  const periodLabel = period === "custom" && dateFrom && dateTo
+    ? `${new Date(dateFrom + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — ${new Date(dateTo + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`
+    : PRESET_LABELS[period] ?? period;
+
   function handleExportPDF() {
-    exportDashboardPDF({ period: PERIOD_LABELS[period], storeLabel, kpis, funnel, ranking, trend, alerts: [] });
+    exportDashboardPDF({ period: periodLabel, storeLabel, kpis, funnel, ranking, trend, alerts: [] });
   }
 
   const pageTitle =
@@ -201,7 +214,7 @@ function AuthenticatedApp() {
             <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
             {(page === "dashboard" || page === "trackeamento") && !isVendedor && (
               <p className="text-[10px] text-muted-foreground hidden sm:block">
-                {PERIOD_LABELS[period]} · {selectedStores.length === 0 ? "Todas as lojas" : `${selectedStores.length} loja${selectedStores.length !== 1 ? "s" : ""}`}
+                {periodLabel} · {selectedStores.length === 0 ? "Todas as lojas" : `${selectedStores.length} loja${selectedStores.length !== 1 ? "s" : ""}`}
               </p>
             )}
           </div>
@@ -216,20 +229,13 @@ function AuthenticatedApp() {
                   restrictToIds={isAdmin ? undefined : allowedStoreIds}
                 />
               </div>
-              <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/80 border border-border">
-                {PERIODS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                      period === p
-                        ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {PERIOD_LABELS[p]}
-                  </button>
-                ))}
+              <div className="hidden sm:block">
+                <DateRangePicker
+                  period={period}
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onChange={handlePeriodChange}
+                />
               </div>
               <button
                 onClick={handleExportPDF}
@@ -251,20 +257,13 @@ function AuthenticatedApp() {
               onChange={handleStoreChange}
               restrictToIds={isAdmin ? undefined : allowedStoreIds}
             />
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/80 border border-border flex-shrink-0">
-              {PERIODS.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
-                    period === p
-                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {PERIOD_LABELS[p]}
-                </button>
-              ))}
+            <div className="sm:hidden flex-shrink-0">
+              <DateRangePicker
+                period={period}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onChange={handlePeriodChange}
+              />
             </div>
             <button
               onClick={handleExportPDF}
