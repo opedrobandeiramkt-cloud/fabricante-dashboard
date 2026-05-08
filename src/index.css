@@ -4,26 +4,29 @@
 
 @layer base {
   :root {
-    --background: 224 15% 8%;
+    /* ── Backgrounds ─────────────────────────────────────── */
+    --background: 222 20% 7%;
     --foreground: 220 20% 92%;
 
-    --card: 224 15% 11%;
+    --card: 222 18% 10%;
     --card-foreground: 220 20% 92%;
 
-    --border: 224 12% 18%;
+    --border: 222 14% 17%;
 
-    --primary: 258 90% 66%;
+    /* ── Brand: azul profissional (B2B analytics) ─────────── */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 224 12% 16%;
+    --secondary: 222 14% 15%;
     --secondary-foreground: 220 15% 70%;
 
-    --muted: 224 12% 14%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 222 14% 13%;
+    --muted-foreground: 220 10% 48%;
 
-    --accent: 258 70% 55%;
+    --accent: 217 76% 48%;
     --accent-foreground: 0 0% 100%;
 
+    /* ── Semântico ───────────────────────────────────────── */
     --success: 142 70% 45%;
     --warning: 38 95% 55%;
     --danger: 0 75% 55%;
@@ -36,9 +39,37 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
+  }
+
+  /* ── Seleção ─────────────────────────────────────────── */
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
   }
 }
 
@@ -46,7 +77,14 @@
   .glow-primary {
     box-shadow: 0 0 20px hsl(var(--primary) / 0.25);
   }
+
   .card-base {
-    @apply bg-card border border-border rounded-lg;
+    @apply bg-card border border-border rounded-lg transition-colors duration-200;
+  }
+
+  /* Números tabulares para métricas */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 }

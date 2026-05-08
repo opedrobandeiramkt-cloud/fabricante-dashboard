@@ -41,20 +41,29 @@ function KPICard({ title, value, delta, deltaLabel, icon, accent = "primary", hi
     accent === "warning" ? "var(--warning)" : "var(--primary)";
 
   return (
-    <div className={`card-base p-5 flex flex-col gap-4 transition-colors hover:border-[hsl(var(--primary)/0.4)] ${
-      highlight ? "border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.04)]" : ""
+    <div className={`card-base p-5 flex flex-col gap-4 relative overflow-hidden ${
+      highlight
+        ? "border-[hsl(var(--success)/0.3)] bg-[hsl(var(--success)/0.04)]"
+        : "hover:border-[hsl(var(--primary)/0.35)]"
     }`}>
+      {/* Borda accent no topo */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{ background: `hsl(${accentColor} / 0.8)` }}
+      />
       <div className="flex items-start justify-between">
-        <p className="text-sm text-muted-foreground font-medium">{title}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 leading-tight">
+          {title}
+        </p>
         <div
-          className="h-9 w-9 rounded-lg flex items-center justify-center"
+          className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ background: `hsl(${accentColor} / 0.12)` }}
         >
           <span style={{ color: `hsl(${accentColor})` }}>{icon}</span>
         </div>
       </div>
       <div>
-        <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+        <p className="text-3xl font-bold tracking-tight text-foreground tabular">{value}</p>
         <div className="mt-2">
           <Delta value={delta} label={deltaLabel} />
         </div>

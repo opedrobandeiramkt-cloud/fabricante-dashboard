@@ -119,14 +119,14 @@ export function StoreRanking({ data }: StoreRankingProps) {
               >
                 <td className="py-3 pr-4">
                   <span
-                    className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${
+                    className={`text-[11px] font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                       idx === 0
-                        ? "bg-[hsl(var(--warning)/0.2)] text-[hsl(var(--warning))]"
+                        ? "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40"
                         : idx === 1
-                        ? "bg-secondary text-muted-foreground"
+                        ? "bg-slate-400/15 text-slate-300 ring-1 ring-slate-400/30"
                         : idx === 2
-                        ? "bg-[hsl(38_50%_40%/0.15)] text-[hsl(38_60%_55%)]"
-                        : "text-muted-foreground"
+                        ? "bg-orange-700/20 text-orange-400 ring-1 ring-orange-600/30"
+                        : "text-muted-foreground/60 bg-secondary"
                     }`}
                   >
                     {idx + 1}

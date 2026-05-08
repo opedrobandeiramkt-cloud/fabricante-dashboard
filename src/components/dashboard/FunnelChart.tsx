@@ -108,27 +108,28 @@ export function FunnelChart({ data }: FunnelChartProps) {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Linha de conversão etapa a etapa */}
+      {/* Conversões etapa a etapa */}
       <div className="border-t border-border pt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         {funnelData
           .filter((d) => d.conversionFromPrev !== null)
           .slice(0, 4)
-          .map((d) => (
-            <div key={d.key} className="text-center">
-              <p className="text-[10px] text-muted-foreground truncate">{d.label.split(" ")[0]}</p>
-              <p
-                className={`text-sm font-bold ${
-                  (d.conversionFromPrev ?? 0) >= 70
-                    ? "text-[hsl(var(--success))]"
-                    : (d.conversionFromPrev ?? 0) >= 50
-                    ? "text-[hsl(var(--warning))]"
-                    : "text-[hsl(var(--danger))]"
-                }`}
-              >
-                {d.conversionFromPrev}%
-              </p>
-            </div>
-          ))}
+          .map((d) => {
+            const pct = d.conversionFromPrev ?? 0;
+            const color =
+              pct >= 70 ? "hsl(var(--success))" :
+              pct >= 50 ? "hsl(var(--warning))" :
+                          "hsl(var(--danger))";
+            return (
+              <div key={d.key} className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg bg-secondary/50">
+                <p className="text-[10px] text-muted-foreground truncate w-full text-center leading-tight">
+                  {d.label.split(" ").slice(0, 2).join(" ")}
+                </p>
+                <p className="text-sm font-bold tabular leading-none" style={{ color }}>
+                  {pct}%
+                </p>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

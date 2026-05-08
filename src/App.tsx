@@ -470,12 +470,15 @@ function SidebarNavItem({ active, onClick, icon, label }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative ${
         active
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
       }`}
     >
+      {active && (
+        <span className="absolute left-0 inset-y-2 w-0.5 rounded-r-full bg-primary" />
+      )}
       <span className={active ? "text-primary" : ""}>{icon}</span>
       {label}
       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />}

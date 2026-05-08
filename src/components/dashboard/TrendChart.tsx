@@ -1,6 +1,6 @@
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -38,7 +38,7 @@ function CustomTooltip({
           <span style={{ color: p.color }} className="font-medium">
             {p.name === "leads" ? "Leads" : "Vendas"}:{" "}
           </span>
-          <span className="text-foreground font-bold">{p.value.toLocaleString("pt-BR")}</span>
+          <span className="text-foreground font-bold tabular">{p.value.toLocaleString("pt-BR")}</span>
         </p>
       ))}
     </div>
@@ -62,7 +62,17 @@ export function TrendChart({ data }: TrendChartProps) {
       ) : null}
 
       <ResponsiveContainer width="100%" height={data.length === 0 ? 0 : 340}>
-        <LineChart data={data} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
+          <defs>
+            <linearGradient id="grad-leads" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(217 91% 60%)" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="hsl(217 91% 60%)" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="grad-vendas" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(142 70% 45%)" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="hsl(142 70% 45%)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="hsl(var(--border))"
@@ -90,23 +100,25 @@ export function TrendChart({ data }: TrendChartProps) {
               </span>
             )}
           />
-          <Line
+          <Area
             type="monotone"
             dataKey="leads"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(217 91% 60%)"
             strokeWidth={2}
+            fill="url(#grad-leads)"
             dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
-          <Line
+          <Area
             type="monotone"
             dataKey="vendas"
-            stroke="hsl(var(--success))"
+            stroke="hsl(142 70% 45%)"
             strokeWidth={2}
+            fill="url(#grad-vendas)"
             dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
