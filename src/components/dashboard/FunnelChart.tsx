@@ -1,12 +1,3 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import { AlertTriangle } from "lucide-react";
 import type { FunnelStageData } from "@/lib/types";
 
@@ -14,127 +5,107 @@ interface FunnelChartProps {
   data: FunnelStageData[];
 }
 
-interface TooltipPayload {
-  payload?: FunnelStageData;
+function FunnelStage({ entry, maxCount }: { entry: FunnelStageData; maxCount: number }) {
+  const pct = maxCount > 0 ? Math.max(5, (entry.count / maxCount) * 100) : 5;
+  const fill = entry.isWon
+    ? "hsl(var(--success))"
+    : entry.isBottleneck
+    ? "hsl(var(--warning))"
+    : "hsl(var(--primary))";
+  const opacity = entry.isWon ? 1 : entry.isBottleneck ? 0.88 : 0.72;
+
+  return (
+    <div className="group flex items-center gap-2 sm:gap-3 rounded px-1 py-0.5 hover:bg-secondary/30 transition-colors cursor-default">
+      <span
+        className="text-[11px] text-right text-muted-foreground group-hover:text-foreground transition-colors shrink-0 leading-tight w-28 sm:w-36 truncate"
+        title={entry.label}
+      >
+        {entry.label}
+      </span>
+      <div className="flex-1 flex items-center h-6 min-w-0">
+        <div
+          className="h-full rounded-sm transition-[width]"
+          style={{ width: `${pct}%`, background: fill, opacity }}
+        />
+      </div>
+      <span className="text-xs font-semibold text-foreground tabular-nums shrink-0 w-10 sm:w-12 text-right">
+        {entry.count.toLocaleString("pt-BR")}
+      </span>
+    </div>
+  );
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
-  if (!active || !payload?.[0]?.payload) return null;
-  const d = payload[0].payload;
+function ConvBadge({ value }: { value: number }) {
+  const cls =
+    value >= 70
+      ? "text-[hsl(var(--success))] bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.25)]"
+      : value >= 50
+      ? "text-[hsl(var(--warning))] bg-[hsl(var(--warning)/0.1)] border-[hsl(var(--warning)/0.25)]"
+      : "text-[hsl(var(--danger))] bg-[hsl(var(--danger)/0.1)] border-[hsl(var(--danger)/0.25)]";
+
   return (
-    <div className="bg-card border border-border rounded-lg p-3 text-sm shadow-xl">
-      <p className="font-semibold text-foreground mb-1">{d.label}</p>
-      <p className="text-muted-foreground">
-        Leads: <span className="text-foreground font-medium">{d.count.toLocaleString("pt-BR")}</span>
-      </p>
-      {d.conversionFromPrev !== null && (
-        <p className="text-muted-foreground">
-          Conv. da etapa anterior:{" "}
-          <span
-            className={`font-medium ${
-              d.conversionFromPrev >= 70
-                ? "text-[hsl(var(--success))]"
-                : d.conversionFromPrev >= 50
-                ? "text-[hsl(var(--warning))]"
-                : "text-[hsl(var(--danger))]"
-            }`}
-          >
-            {d.conversionFromPrev}%
-          </span>
-        </p>
-      )}
-      {d.isBottleneck && (
-        <p className="text-[hsl(var(--warning))] flex items-center gap-1 mt-1">
-          <AlertTriangle className="h-3 w-3" /> Gargalo identificado
-        </p>
-      )}
+    <div className="flex items-center gap-2 sm:gap-3 py-1 px-1">
+      <div className="shrink-0 w-28 sm:w-36" />
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="flex-1 h-px bg-border" />
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${cls}`}>
+          {value}%
+        </span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+      <div className="shrink-0 w-10 sm:w-12" />
     </div>
   );
 }
 
 export function FunnelChart({ data }: FunnelChartProps) {
-  // Excluindo "Venda Perdida" do funil visual (exibida separado)
   const funnelData = data.filter((d) => !d.isLost);
-
-  const bottlenecks = data.filter((d) => d.isBottleneck);
+  const lostData = data.filter((d) => d.isLost);
+  const bottlenecks = funnelData.filter((d) => d.isBottleneck);
+  const maxCount = funnelData[0]?.count ?? 1;
 
   return (
     <div className="card-base p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Funil de Conversão</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Leads por etapa do processo</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Largura proporcional ao volume · taxa entre etapas
+          </p>
         </div>
         {bottlenecks.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.3)]">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.3)] shrink-0">
             <AlertTriangle className="h-3 w-3" />
             {bottlenecks.length} gargalo{bottlenecks.length > 1 ? "s" : ""}
           </span>
         )}
       </div>
 
-      <div className="overflow-x-auto">
-      <div style={{ minWidth: 300 }}>
-      <ResponsiveContainer width="100%" height={340}>
-        <BarChart
-          data={funnelData}
-          layout="vertical"
-          margin={{ top: 0, right: 48, left: 8, bottom: 0 }}
-          barSize={22}
-        >
-          <XAxis type="number" hide />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={140}
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--border) / 0.4)" }} />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-            {funnelData.map((entry) => (
-              <Cell
-                key={entry.key}
-                fill={
-                  entry.isWon
-                    ? "hsl(var(--success))"
-                    : entry.isBottleneck
-                    ? "hsl(var(--warning))"
-                    : "hsl(var(--primary))"
-                }
-                fillOpacity={entry.isBottleneck ? 0.9 : 0.75}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      </div>
+      <div className="flex flex-col">
+        {funnelData.map((entry, i) => (
+          <div key={entry.key}>
+            <FunnelStage entry={entry} maxCount={maxCount} />
+            {i < funnelData.length - 1 && funnelData[i + 1]?.conversionFromPrev != null && (
+              <ConvBadge value={funnelData[i + 1].conversionFromPrev!} />
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Conversões etapa a etapa */}
-      <div className="border-t border-border pt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {funnelData
-          .filter((d) => d.conversionFromPrev !== null)
-          .slice(0, 4)
-          .map((d) => {
-            const pct = d.conversionFromPrev ?? 0;
-            const color =
-              pct >= 70 ? "hsl(var(--success))" :
-              pct >= 50 ? "hsl(var(--warning))" :
-                          "hsl(var(--danger))";
-            return (
-              <div key={d.key} className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg bg-secondary/50">
-                <p className="text-[10px] text-muted-foreground truncate w-full text-center leading-tight">
-                  {d.label.split(" ").slice(0, 2).join(" ")}
-                </p>
-                <p className="text-sm font-bold tabular leading-none" style={{ color }}>
-                  {pct}%
-                </p>
-              </div>
-            );
-          })}
-      </div>
+      {lostData.map((lost) => (
+        <div
+          key={lost.key}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[hsl(var(--danger)/0.07)] border border-[hsl(var(--danger)/0.15)]"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 text-[hsl(var(--danger))] shrink-0" />
+          <span className="text-xs text-muted-foreground">
+            {lost.label}:{" "}
+            <span className="font-semibold text-[hsl(var(--danger))]">
+              {lost.count.toLocaleString("pt-BR")} leads
+            </span>
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
