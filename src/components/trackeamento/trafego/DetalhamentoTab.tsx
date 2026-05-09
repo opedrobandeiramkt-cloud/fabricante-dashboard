@@ -40,11 +40,11 @@ function buildMetaKpis(m: AdPlatformMetrics): KpiItem[] {
 
 function KpiRow({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-5 gap-2 mb-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-5">
       {items.map(({ label, value }) => (
         <div key={label} className="card-base px-3 py-2.5">
           <p className="text-[9px] text-muted-foreground leading-tight">{label}</p>
-          <p className="text-lg font-bold text-foreground mt-0.5 leading-tight">{value}</p>
+          <p className="text-base sm:text-lg font-bold text-foreground mt-0.5 leading-tight">{value}</p>
         </div>
       ))}
     </div>
@@ -110,13 +110,13 @@ export function DetalhamentoTab({ filters }: Props) {
         <KpiRow items={buildGoogleKpis(google.kpis)} />
 
         {/* Linha 1: Leads por Idade | Leads por Gênero */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AgeChart data={google.demographics.age} />
           <GenderChart data={google.demographics.gender} />
         </div>
 
         {/* Linha 2: Leads por Dispositivo | Termos de Pesquisa */}
-        <div className="grid grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <DeviceChart data={google.demographics.device} />
           <SearchTermsTable rows={google.searchTerms ?? []} />
         </div>
@@ -131,13 +131,13 @@ export function DetalhamentoTab({ filters }: Props) {
         <KpiRow items={buildMetaKpis(meta.kpis)} />
 
         {/* Linha 1: Leads por Idade | Leads por Gênero */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AgeChart data={meta.demographics.age} />
           <GenderChart data={meta.demographics.gender} />
         </div>
 
         {/* Linha 2: Leads por Dispositivo | Melhores Anúncios */}
-        <div className="grid grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <DeviceChart data={meta.demographics.device} />
           <TopAdsTable ads={meta.topAds ?? []} />
         </div>

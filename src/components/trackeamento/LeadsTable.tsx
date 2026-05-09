@@ -125,7 +125,7 @@ function Pagination({ page, totalPages, total, onPage }: PaginationProps) {
   const from = (page - 1) * 50 + 1;
   const to   = Math.min(page * 50, total);
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-secondary/10">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-border bg-secondary/10">
       <span className="text-xs text-muted-foreground">{from}–{to} de {total} leads</span>
       <div className="flex items-center gap-1">
         <button
@@ -208,7 +208,7 @@ export function LeadsTable({ leads, loading, total, totalPages, page, onPage, on
               <tr key={lead.id} className="hover:bg-secondary/20 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
-                    <p className="font-medium text-foreground truncate max-w-[150px]">
+                    <p className="font-medium text-foreground truncate max-w-[100px] sm:max-w-[150px]">
                       {lead.contactName ?? <span className="text-muted-foreground">—</span>}
                     </p>
                     {lead.isDuplicate && (

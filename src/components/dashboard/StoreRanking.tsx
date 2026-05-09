@@ -104,7 +104,7 @@ export function StoreRanking({ data }: StoreRankingProps) {
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden sm:table-cell">Leads</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Conversão</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden sm:table-cell">Vendas</th>
-              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4">Faturamento</th>
+              <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden sm:table-cell">Faturamento</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ticket Médio</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">Ciclo Médio</th>
               <th className="text-right text-xs font-medium text-muted-foreground pb-3 pr-4 hidden lg:table-cell">1ª Resposta</th>
@@ -147,7 +147,7 @@ export function StoreRanking({ data }: StoreRankingProps) {
                 <td className="py-3 pr-4 text-right font-medium text-foreground hidden sm:table-cell">
                   {row.wonDeals.toLocaleString("pt-BR")}
                 </td>
-                <td className="py-3 pr-4 text-right font-semibold text-[hsl(var(--success))]">
+                <td className="py-3 pr-4 text-right font-semibold text-[hsl(var(--success))] hidden sm:table-cell">
                   {formatBRL(row.revenue)}
                 </td>
                 <td className="py-3 pr-4 text-right text-muted-foreground hidden lg:table-cell">

@@ -73,18 +73,20 @@ export function FunnelChart({ data }: FunnelChartProps) {
         )}
       </div>
 
+      <div className="overflow-x-auto">
+      <div style={{ minWidth: 300 }}>
       <ResponsiveContainer width="100%" height={340}>
         <BarChart
           data={funnelData}
           layout="vertical"
-          margin={{ top: 0, right: 60, left: 8, bottom: 0 }}
+          margin={{ top: 0, right: 48, left: 8, bottom: 0 }}
           barSize={22}
         >
           <XAxis type="number" hide />
           <YAxis
             type="category"
             dataKey="label"
-            width={175}
+            width={140}
             tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
@@ -107,6 +109,8 @@ export function FunnelChart({ data }: FunnelChartProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
+      </div>
 
       {/* Conversões etapa a etapa */}
       <div className="border-t border-border pt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">

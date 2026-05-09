@@ -38,11 +38,11 @@ export function VisaoGeralTab({ filters }: Props) {
   return (
     <div className="space-y-5">
       {/* Topo: Jornada de Compra (esq) | Indicadores Macro (dir) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
-        <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 items-start">
+        <div className="md:col-span-3">
           <MacroFunnel funnel={overview.funnel} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2">
           <IndicadoresMacroPanel
             macro={overview.macro}
             temporal={overview.temporal}

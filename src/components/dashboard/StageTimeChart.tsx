@@ -61,8 +61,10 @@ export function StageTimeChart({ data }: StageTimeChartProps) {
         </span>
       </div>
 
+      <div className="overflow-x-auto">
+      <div style={{ minWidth: 320 }}>
       <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 60 }} barSize={28}>
+        <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 60 }} barSize={24}>
           <XAxis
             dataKey="label"
             tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
@@ -100,6 +102,8 @@ export function StageTimeChart({ data }: StageTimeChartProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
+      </div>
     </div>
   );
 }

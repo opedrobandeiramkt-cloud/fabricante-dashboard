@@ -63,7 +63,7 @@ function KPICard({ title, value, delta, deltaLabel, icon, accent = "primary", hi
         </div>
       </div>
       <div>
-        <p className="text-3xl font-bold tracking-tight text-foreground tabular">{value}</p>
+        <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground tabular">{value}</p>
         <div className="mt-2">
           <Delta value={delta} label={deltaLabel} />
         </div>

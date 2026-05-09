@@ -18,22 +18,11 @@ const BG = [
   "hsl(213 75% 38%)",
 ];
 
-// y da borda SUPERIOR de cada trapézio — onde o ícone fica "em cima"
-const ICON_TOP = ["0%", "9%", "23.5%"];
+const ICON_TOP    = ["0%",   "9%",   "23.5%"];
+const CONTENT_TOP = ["11%",  "21%",  "33%"];
+const CONTENT_BOT = ["4%",   "13%",  "22%"];
 
-// conteúdo começa abaixo do ícone (raio 20px + folga)
-const CONTENT_TOP = ["11%", "21%", "33%"];
-const CONTENT_BOTTOM = ["4%", "13%", "22%"];
-
-function MetricBlock({
-  label,
-  value,
-  delta,
-}: {
-  label: string;
-  value: string;
-  delta?: number;
-}) {
+function MetricBlock({ label, value, delta }: { label: string; value: string; delta?: number }) {
   return (
     <div className="text-center">
       <p className="text-[10px] text-white/80 leading-tight">{label}</p>
@@ -67,6 +56,32 @@ function ConnectorBadge({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ─── Layout mobile: 3 cartões empilhados ──────────────────────────────────────
+
+function MobileStage({
+  bg, icon, title, children,
+}: {
+  bg: string;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl p-4 overflow-hidden" style={{ background: bg }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-7 w-7 rounded-full ring-2 ring-white/40 flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(0,0,0,0.25)" }}>
+          {icon}
+        </div>
+        <p className="text-[10px] font-semibold text-white/70 uppercase tracking-widest">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
 export function MacroFunnel({ funnel }: Props) {
   const FUNNEL_H = 300;
 
@@ -76,18 +91,63 @@ export function MacroFunnel({ funnel }: Props) {
         Jornada de Compra
       </p>
 
-      {/* overflow:visible permite que o ícone do estágio 1 sobreponha levemente a margem acima */}
-      <div className="flex-1 relative" style={{ minHeight: FUNNEL_H, overflow: "visible" }}>
+      {/* ── Mobile: cartões empilhados ── */}
+      <div className="sm:hidden space-y-3">
+        <MobileStage bg={BG[0]} icon={<Compass className="h-3.5 w-3.5 text-white" />} title="Descoberta">
+          <div className="grid grid-cols-3 gap-2">
+            <MetricBlock label="Impressões" value={fmtNum(funnel.impressions)} delta={funnel.impressionsDelta} />
+            <div className="flex items-center justify-center">
+              <MiniBadge label="CTR" value={funnel.ctr > 0 ? fmtPct(funnel.ctr) : "—"} />
+            </div>
+            <MetricBlock label="Cliques" value={fmtNum(funnel.clicks)} delta={funnel.clicksDelta} />
+          </div>
+        </MobileStage>
+
+        <div className="flex justify-center py-0.5">
+          <ConnectorBadge label="Custo por Lead" value={funnel.cpl > 0 ? fmtBRL(funnel.cpl) : "—"} />
+        </div>
+
+        <MobileStage bg={BG[1]} icon={<Lightbulb className="h-3.5 w-3.5 text-white" />} title="Consideração">
+          <div className="grid grid-cols-2 gap-2">
+            <MetricBlock label="Leads" value={fmtNum(funnel.leads)} delta={funnel.leadsDelta} />
+            <MetricBlock label="Atendimentos" value={fmtNum(funnel.atendimentos)} />
+          </div>
+        </MobileStage>
+
+        <div className="flex justify-center py-0.5">
+          <ConnectorBadge label="Custo por Venda" value={funnel.cps > 0 ? fmtBRL(funnel.cps) : "—"} />
+        </div>
+
+        <MobileStage bg={BG[2]} icon={<DollarSign className="h-3.5 w-3.5 text-white" />} title="Decisão">
+          <div className="grid grid-cols-3 gap-2">
+            <MetricBlock
+              label="Ticket Médio"
+              value={funnel.ticketMedio > 0 ? fmtBRL(funnel.ticketMedio) : "—"}
+            />
+            <MetricBlock
+              label="Vendas"
+              value={funnel.vendas > 0 ? fmtNum(funnel.vendas) : "—"}
+              delta={funnel.vendas > 0 ? funnel.vendasDelta : undefined}
+            />
+            <MetricBlock
+              label="% Vendas"
+              value={funnel.percentVendas > 0 ? fmtPct(funnel.percentVendas) : "—"}
+            />
+          </div>
+        </MobileStage>
+      </div>
+
+      {/* ── Desktop/tablet: funil trapezoidal horizontal ── */}
+      <div className="hidden sm:flex flex-1 relative" style={{ minHeight: FUNNEL_H, overflow: "visible" }}>
         <div className="absolute inset-0 grid gap-0" style={{ gridTemplateColumns: "1fr 100px 1fr 100px 1fr" }}>
 
-          {/* ── Estágio 1: Descoberta ── */}
+          {/* Estágio 1: Descoberta */}
           <div className="relative h-full" style={{ overflow: "visible" }}>
-            {/* Fundo + conteúdo — clipped pelo trapézio */}
             <div className="absolute inset-0" style={{ clipPath: CLIPS[0] }}>
               <div className="absolute inset-0" style={{ background: BG[0] }} />
               <div
                 className="absolute inset-x-0 flex flex-col items-center pl-3 pr-9 gap-2"
-                style={{ top: CONTENT_TOP[0], bottom: CONTENT_BOTTOM[0] }}
+                style={{ top: CONTENT_TOP[0], bottom: CONTENT_BOT[0] }}
               >
                 <div className="flex-1 w-full flex flex-col justify-around">
                   <MetricBlock label="Impressões" value={fmtNum(funnel.impressions)} delta={funnel.impressionsDelta} />
@@ -97,7 +157,6 @@ export function MacroFunnel({ funnel }: Props) {
                 <p className="text-[10px] text-white/70 font-medium">Descoberta</p>
               </div>
             </div>
-            {/* Ícone: metade fora do trapézio (acima), metade dentro */}
             <div
               className="absolute z-20 w-10 h-10 rounded-full bg-blue-700 ring-2 ring-white/40 shadow-lg flex items-center justify-center"
               style={{ top: ICON_TOP[0], left: "50%", transform: "translateX(-50%) translateY(-50%)" }}
@@ -106,21 +165,18 @@ export function MacroFunnel({ funnel }: Props) {
             </div>
           </div>
 
-          {/* ── Conector: Custo por Lead ── */}
+          {/* Conector: Custo por Lead */}
           <div className="flex items-center justify-center relative z-10">
-            <ConnectorBadge
-              label="Custo por Lead"
-              value={funnel.cpl > 0 ? fmtBRL(funnel.cpl) : "—"}
-            />
+            <ConnectorBadge label="Custo por Lead" value={funnel.cpl > 0 ? fmtBRL(funnel.cpl) : "—"} />
           </div>
 
-          {/* ── Estágio 2: Consideração ── */}
+          {/* Estágio 2: Consideração */}
           <div className="relative h-full">
             <div className="absolute inset-0" style={{ clipPath: CLIPS[1] }}>
               <div className="absolute inset-0" style={{ background: BG[1] }} />
               <div
                 className="absolute inset-x-0 flex flex-col items-center pl-3 pr-9 gap-2"
-                style={{ top: CONTENT_TOP[1], bottom: CONTENT_BOTTOM[1] }}
+                style={{ top: CONTENT_TOP[1], bottom: CONTENT_BOT[1] }}
               >
                 <div className="flex-1 w-full flex flex-col justify-around">
                   <MetricBlock label="Leads" value={fmtNum(funnel.leads)} delta={funnel.leadsDelta} />
@@ -137,36 +193,27 @@ export function MacroFunnel({ funnel }: Props) {
             </div>
           </div>
 
-          {/* ── Conector: Custo por Venda ── */}
+          {/* Conector: Custo por Venda */}
           <div className="flex items-center justify-center relative z-10">
-            <ConnectorBadge
-              label="Custo por Venda"
-              value={funnel.cps > 0 ? fmtBRL(funnel.cps) : "—"}
-            />
+            <ConnectorBadge label="Custo por Venda" value={funnel.cps > 0 ? fmtBRL(funnel.cps) : "—"} />
           </div>
 
-          {/* ── Estágio 3: Decisão ── */}
+          {/* Estágio 3: Decisão */}
           <div className="relative h-full">
             <div className="absolute inset-0" style={{ clipPath: CLIPS[2] }}>
               <div className="absolute inset-0" style={{ background: BG[2] }} />
               <div
                 className="absolute inset-x-0 flex flex-col items-center px-3 gap-2"
-                style={{ top: CONTENT_TOP[2], bottom: CONTENT_BOTTOM[2] }}
+                style={{ top: CONTENT_TOP[2], bottom: CONTENT_BOT[2] }}
               >
                 <div className="flex-1 w-full flex flex-col justify-around">
-                  <MetricBlock
-                    label="Ticket Médio"
-                    value={funnel.ticketMedio > 0 ? fmtBRL(funnel.ticketMedio) : "—"}
-                  />
+                  <MetricBlock label="Ticket Médio" value={funnel.ticketMedio > 0 ? fmtBRL(funnel.ticketMedio) : "—"} />
                   <MetricBlock
                     label="Vendas Realizadas"
                     value={funnel.vendas > 0 ? fmtNum(funnel.vendas) : "—"}
                     delta={funnel.vendas > 0 ? funnel.vendasDelta : undefined}
                   />
-                  <MetricBlock
-                    label="% Vendas"
-                    value={funnel.percentVendas > 0 ? fmtPct(funnel.percentVendas) : "—"}
-                  />
+                  <MetricBlock label="% Vendas" value={funnel.percentVendas > 0 ? fmtPct(funnel.percentVendas) : "—"} />
                 </div>
                 <p className="text-[10px] text-white/70 font-medium">Decisão</p>
               </div>
