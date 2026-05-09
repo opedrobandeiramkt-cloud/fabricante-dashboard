@@ -15,7 +15,7 @@ interface StageTimeChartProps {
   data: StageTimeData[];
 }
 
-interface TooltipPayload {
+interface StageTooltipItem {
   payload?: StageTimeData;
 }
 
@@ -25,7 +25,7 @@ function CustomTooltip({
   avg,
 }: {
   active?: boolean;
-  payload?: TooltipPayload[];
+  payload?: StageTooltipItem[];
   avg: number;
 }) {
   if (!active || !payload?.[0]?.payload) return null;
@@ -122,7 +122,7 @@ export function StageTimeChart({ data }: StageTimeChartProps) {
                 content={(props) => (
                   <CustomTooltip
                     active={props.active}
-                    payload={props.payload as TooltipPayload[]}
+                    payload={props.payload as unknown as StageTooltipItem[]}
                     avg={mean}
                   />
                 )}
