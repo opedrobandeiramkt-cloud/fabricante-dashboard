@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, Radio, Zap } from "lucide-react";
-import type { DashboardFilters, RastrackingOverview, RoasStatus } from "@/lib/types";
+import type { DashboardFilters, RoasStatus } from "@/lib/types";
 import { useRastracking } from "@/hooks/useRastracking";
 import { fmtBRL, fmtPct } from "./fmt";
 
