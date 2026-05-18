@@ -52,11 +52,8 @@ function delta(current: number, previous: number): number {
 function resolvePeriodDates(query: TrafegoQuery): { start: Date; end: Date } {
   const startDate = query.startDate ?? query.from;
   const endDate   = query.endDate   ?? query.to;
-  if (query.period === "custom" && startDate && endDate) {
-    return {
-      start: new Date(startDate),
-      end:   new Date(endDate),
-    };
+  if (startDate && endDate) {
+    return { start: new Date(startDate), end: new Date(endDate) };
   }
   const validPeriods = new Set(["7d", "30d", "90d", "12m"]);
   const period = validPeriods.has(query.period ?? "") ? (query.period as "7d" | "30d" | "90d" | "12m") : "30d";
@@ -66,9 +63,9 @@ function resolvePeriodDates(query: TrafegoQuery): { start: Date; end: Date } {
 function resolvePreviousDates(query: TrafegoQuery): { start: Date; end: Date } {
   const startDate = query.startDate ?? query.from;
   const endDate   = query.endDate   ?? query.to;
-  if (query.period === "custom" && startDate && endDate) {
-    const start = new Date(startDate);
-    const end   = new Date(endDate);
+  if (startDate && endDate) {
+    const start      = new Date(startDate);
+    const end        = new Date(endDate);
     const durationMs = end.getTime() - start.getTime();
     return {
       start: new Date(start.getTime() - durationMs),
