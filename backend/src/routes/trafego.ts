@@ -58,8 +58,8 @@ function resolvePeriodDates(query: TrafegoQuery): { start: Date; end: Date } {
       end:   new Date(endDate),
     };
   }
-  const validPeriods = new Set(["7d", "30d", "90d"]);
-  const period = validPeriods.has(query.period ?? "") ? (query.period as "7d" | "30d" | "90d") : "30d";
+  const validPeriods = new Set(["7d", "30d", "90d", "12m"]);
+  const period = validPeriods.has(query.period ?? "") ? (query.period as "7d" | "30d" | "90d" | "12m") : "30d";
   return getPeriodRange(period);
 }
 
@@ -75,8 +75,8 @@ function resolvePreviousDates(query: TrafegoQuery): { start: Date; end: Date } {
       end:   new Date(start.getTime()),
     };
   }
-  const validPeriods = new Set(["7d", "30d", "90d"]);
-  const period = validPeriods.has(query.period ?? "") ? (query.period as "7d" | "30d" | "90d") : "30d";
+  const validPeriods = new Set(["7d", "30d", "90d", "12m"]);
+  const period = validPeriods.has(query.period ?? "") ? (query.period as "7d" | "30d" | "90d" | "12m") : "30d";
   return getPreviousPeriodRange(period);
 }
 

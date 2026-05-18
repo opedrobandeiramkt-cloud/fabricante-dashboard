@@ -52,9 +52,9 @@ export function useTrafego(filters: DashboardFilters, tab: TrafegoTab): UseTrafe
     let promise: Promise<void>;
 
     if (tab === "visao-geral") {
-      promise = api.trafegoOverview(filters.storeIds, filters.period).then(setOverview);
+      promise = api.trafegoOverview(filters.storeIds, filters.period, filters.dateFrom, filters.dateTo).then(setOverview);
     } else if (tab === "detalhamento") {
-      promise = api.trafegoDetalhamento(filters.storeIds, filters.period).then(setDetalhamento);
+      promise = api.trafegoDetalhamento(filters.storeIds, filters.period, filters.dateFrom, filters.dateTo).then(setDetalhamento);
     } else if (tab === "historico") {
       promise = api.trafegoHistorico(filters.storeIds, year).then(setHistorico);
     } else {
@@ -66,7 +66,7 @@ export function useTrafego(filters: DashboardFilters, tab: TrafegoTab): UseTrafe
         setError(e instanceof Error ? e.message : "Erro ao carregar dados")
       )
       .finally(() => setLoading(false));
-  }, [tab, storeKey, filters.period]);
+  }, [tab, storeKey, filters.period, filters.dateFrom, filters.dateTo]);
 
   return { overview, detalhamento, historico, loading, error };
 }
