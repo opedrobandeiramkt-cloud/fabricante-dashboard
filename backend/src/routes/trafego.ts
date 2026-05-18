@@ -10,6 +10,8 @@ type TrafegoQuery = {
   storeIds?: string;
   startDate?: string;
   endDate?: string;
+  from?: string;
+  to?: string;
 };
 
 type HistoricoQuery = {
@@ -48,10 +50,12 @@ function delta(current: number, previous: number): number {
 }
 
 function resolvePeriodDates(query: TrafegoQuery): { start: Date; end: Date } {
-  if (query.period === "custom" && query.startDate && query.endDate) {
+  const startDate = query.startDate ?? query.from;
+  const endDate   = query.endDate   ?? query.to;
+  if (query.period === "custom" && startDate && endDate) {
     return {
-      start: new Date(query.startDate),
-      end:   new Date(query.endDate),
+      start: new Date(startDate),
+      end:   new Date(endDate),
     };
   }
   const validPeriods = new Set(["7d", "30d", "90d"]);
@@ -60,9 +64,11 @@ function resolvePeriodDates(query: TrafegoQuery): { start: Date; end: Date } {
 }
 
 function resolvePreviousDates(query: TrafegoQuery): { start: Date; end: Date } {
-  if (query.period === "custom" && query.startDate && query.endDate) {
-    const start = new Date(query.startDate);
-    const end   = new Date(query.endDate);
+  const startDate = query.startDate ?? query.from;
+  const endDate   = query.endDate   ?? query.to;
+  if (query.period === "custom" && startDate && endDate) {
+    const start = new Date(startDate);
+    const end   = new Date(endDate);
     const durationMs = end.getTime() - start.getTime();
     return {
       start: new Date(start.getTime() - durationMs),

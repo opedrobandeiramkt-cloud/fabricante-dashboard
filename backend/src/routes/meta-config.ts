@@ -124,8 +124,11 @@ export async function metaConfigRoutes(app: FastifyInstance) {
           iv:  config.accessTokenIv,
           tag: config.accessTokenTag,
         });
+        const accountId = config.adAccountId.startsWith("act_")
+          ? config.adAccountId
+          : `act_${config.adAccountId}`;
         const res = await fetch(
-          `${META_API}/${config.adAccountId}?fields=id,name&access_token=${token}`
+          `${META_API}/${accountId}?fields=id,name,account_status&access_token=${token}`
         );
         const latencyMs = Date.now() - start;
         if (!res.ok) {
