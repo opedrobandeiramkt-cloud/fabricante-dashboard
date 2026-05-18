@@ -46,6 +46,7 @@ model Store {
   leadEvents LeadEvent[]
   quotes     Quote[]
   crmConfigs StoreCrmConfig[]
+  metaConfig StoreMetaConfig?
   adMetrics      AdMetricDaily[]
   adDemographics AdDemographic[]
   adSearchTerms  AdSearchTerm[]
@@ -195,6 +196,25 @@ model Quote {
   @@index([tenantId, status,     createdAt(sort: Desc)])
   @@index([tenantId, vendedorId, createdAt(sort: Desc)])
   @@map("quotes")
+}
+
+// ─── Configuração de Meta Ads por loja ────────────────────────────────────────
+model StoreMetaConfig {
+  id               String    @id @default(uuid())
+  storeId          String    @unique @map("store_id")
+  adAccountId      String    @map("ad_account_id")    // act_XXXXXXXXXX
+  pixelId          String?   @map("pixel_id")          // opcional — para CAPI futuro
+  accessTokenEnc   String    @map("access_token_enc")  // AES-256-GCM ciphertext (hex)
+  accessTokenIv    String    @map("access_token_iv")   // IV (hex, 12 bytes)
+  accessTokenTag   String    @map("access_token_tag")  // Auth tag (hex, 16 bytes)
+  syncEnabled      Boolean   @default(true) @map("sync_enabled")
+  lastSyncAt       DateTime? @map("last_sync_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@map("store_meta_configs")
 }
 
 // ─── Configuração de CRM por loja ────────────────────────────────────────────

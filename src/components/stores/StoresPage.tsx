@@ -2,10 +2,11 @@ import { useState, useMemo } from "react";
 import {
   Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight,
   Store, MapPin, Phone, Mail, Link2, AlertTriangle, Copy, Check,
-  ChevronRight, ArrowLeft, Users, Webhook,
+  ChevronRight, ArrowLeft, Users, Webhook, BarChart2,
 } from "lucide-react";
 import { StoreFormModal } from "./StoreFormModal";
 import { CrmConfigModal } from "./CrmConfigModal";
+import { MetaConfigModal } from "./MetaConfigModal";
 import { useStores } from "@/hooks/useStores";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsersContext } from "@/contexts/UsersContext";
@@ -36,6 +37,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
   const [modalStore,          setModalStore]          = useState<StoreType | null | "new">(null);
   const [deleteTarget,        setDeleteTarget]        = useState<StoreType | null>(null);
   const [crmStore,            setCrmStore]            = useState<StoreType | null>(null);
+  const [metaStore,           setMetaStore]           = useState<StoreType | null>(null);
 
   // ── Dados derivados ──────────────────────────────────────────────────────────
 
@@ -287,6 +289,7 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
                 onDelete={() => setDeleteTarget(store)}
                 onToggle={() => toggleActive(store.id)}
                 onCrmConfig={isAdmin ? () => setCrmStore(store) : undefined}
+                onMetaConfig={isAdmin ? () => setMetaStore(store) : undefined}
               />
             ))}
           </div>
@@ -309,6 +312,15 @@ export function StoresPage({ readOnly = false }: StoresPageProps) {
           storeId={crmStore.id}
           storeName={crmStore.name}
           onClose={() => setCrmStore(null)}
+        />
+      )}
+
+      {/* Modal de configuração Meta Ads */}
+      {isAdmin && metaStore && (
+        <MetaConfigModal
+          storeId={metaStore.id}
+          storeName={metaStore.name}
+          onClose={() => setMetaStore(null)}
         />
       )}
 
@@ -414,13 +426,15 @@ function StoreRow({
   onDelete,
   onToggle,
   onCrmConfig,
+  onMetaConfig,
 }: {
-  store:        StoreType;
-  readOnly:     boolean;
-  onEdit:       () => void;
-  onDelete:     () => void;
-  onToggle:     () => void;
-  onCrmConfig?: () => void;
+  store:         StoreType;
+  readOnly:      boolean;
+  onEdit:        () => void;
+  onDelete:      () => void;
+  onToggle:      () => void;
+  onCrmConfig?:  () => void;
+  onMetaConfig?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-4 px-4 sm:px-5 py-3.5 transition-colors hover:bg-secondary/20 ${
@@ -473,6 +487,15 @@ function StoreRow({
       {/* Ações */}
       {!readOnly && (
         <div className="flex items-center gap-1 flex-shrink-0">
+          {onMetaConfig && (
+            <button
+              onClick={onMetaConfig}
+              title="Configurar Meta Ads"
+              className="h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-blue-500 transition-colors"
+            >
+              <BarChart2 className="h-4 w-4" />
+            </button>
+          )}
           {onCrmConfig && (
             <button
               onClick={onCrmConfig}

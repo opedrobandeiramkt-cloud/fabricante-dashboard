@@ -281,6 +281,182 @@ export async function ingestRoutes(app: FastifyInstance) {
     }
   );
 
+  // ── POST /api/ingest/meta-ads ─────────────────────────────────────────────────
+  // Recebe dados da Meta Marketing API via N8N e faz upsert nas tabelas de ads
+  app.post(
+    "/api/ingest/meta-ads",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const authHeader   = req.headers.authorization ?? "";
+      const expectedToken = process.env.WEBHOOK_SECRET;
+      if (!expectedToken) return reply.code(503).send({ error: "Endpoint indisponível." });
+      if (authHeader !== `Bearer ${expectedToken}`) return reply.code(401).send({ error: "Unauthorized" });
+
+      const body = req.body as {
+        tenant_slug:        string;
+        store_external_id:  string;
+        date:               string;  // "YYYY-MM-DD"
+        metrics?: {
+          spend?:       number;
+          impressions?: number;
+          clicks?:      number;
+          leads?:       number;
+          messages?:    number;
+        };
+        demographics?: Array<{
+          dimension:   string;  // "age" | "gender" | "device"
+          bucket:      string;
+          spend?:      number;
+          clicks?:     number;
+          leads?:      number;
+          impressions?: number;
+        }>;
+        creatives?: Array<{
+          external_id:  string;
+          name:         string;
+          type?:        string;
+          sub_platform?: string;
+          spend?:       number;
+          leads?:       number;
+          messages?:    number;
+          ctr?:         number;
+          period_start: string;
+          period_end:   string;
+        }>;
+        geo?: Array<{
+          state:   string;
+          spend?:  number;
+          clicks?: number;
+          leads?:  number;
+        }>;
+      };
+
+      if (!body.tenant_slug || !body.store_external_id || !body.date) {
+        return reply.code(400).send({ error: "Campos obrigatórios: tenant_slug, store_external_id, date." });
+      }
+
+      const date = new Date(body.date + "T00:00:00.000Z");
+      if (isNaN(date.getTime())) return reply.code(400).send({ error: "date inválido. Use YYYY-MM-DD." });
+
+      try {
+        const tenant = await prisma.tenant.findUnique({ where: { slug: body.tenant_slug } });
+        if (!tenant) return reply.code(404).send({ error: `Tenant não encontrado: ${body.tenant_slug}` });
+
+        const store = await prisma.store.findFirst({
+          where: { tenantId: tenant.id, externalId: body.store_external_id },
+        });
+        if (!store) return reply.code(404).send({ error: `Loja não encontrada: ${body.store_external_id}` });
+
+        await prisma.$transaction(async (tx) => {
+          // Métricas diárias — upsert
+          if (body.metrics) {
+            await tx.adMetricDaily.upsert({
+              where:  { tenantId_storeId_platform_date: { tenantId: tenant.id, storeId: store.id, platform: "meta", date } },
+              create: {
+                tenantId:    tenant.id,
+                storeId:     store.id,
+                platform:    "meta",
+                date,
+                spend:       body.metrics.spend       ?? 0,
+                impressions: body.metrics.impressions ?? 0,
+                clicks:      body.metrics.clicks      ?? 0,
+                leads:       body.metrics.leads       ?? 0,
+                messages:    body.metrics.messages    ?? 0,
+              },
+              update: {
+                spend:       body.metrics.spend       ?? 0,
+                impressions: body.metrics.impressions ?? 0,
+                clicks:      body.metrics.clicks      ?? 0,
+                leads:       body.metrics.leads       ?? 0,
+                messages:    body.metrics.messages    ?? 0,
+              },
+            });
+          }
+
+          // Demographics — deleta e recria (mais simples que upsert por bucket)
+          if (body.demographics?.length) {
+            await tx.adDemographic.deleteMany({
+              where: { tenantId: tenant.id, storeId: store.id, platform: "meta", date },
+            });
+            await tx.adDemographic.createMany({
+              data: body.demographics.map((d) => ({
+                tenantId:    tenant.id,
+                storeId:     store.id,
+                platform:    "meta",
+                date,
+                dimension:   d.dimension,
+                bucket:      d.bucket,
+                spend:       d.spend       ?? 0,
+                clicks:      d.clicks      ?? 0,
+                leads:       d.leads       ?? 0,
+                impressions: d.impressions ?? 0,
+              })),
+            });
+          }
+
+          // Criativos — upsert por externalId
+          if (body.creatives?.length) {
+            for (const c of body.creatives) {
+              const pStart = new Date(c.period_start + "T00:00:00.000Z");
+              const pEnd   = new Date(c.period_end   + "T00:00:00.000Z");
+              // Exclui registro existente do mesmo período e insere novo
+              await tx.adCreative.deleteMany({
+                where: { tenantId: tenant.id, storeId: store.id, externalId: c.external_id, periodStart: pStart },
+              });
+              await tx.adCreative.create({
+                data: {
+                  tenantId:    tenant.id,
+                  storeId:     store.id,
+                  externalId:  c.external_id,
+                  name:        c.name,
+                  type:        c.type        ?? "image",
+                  subPlatform: c.sub_platform ?? null,
+                  spend:       c.spend       ?? 0,
+                  leads:       c.leads       ?? 0,
+                  messages:    c.messages    ?? 0,
+                  ctr:         c.ctr         ?? 0,
+                  periodStart: pStart,
+                  periodEnd:   pEnd,
+                },
+              });
+            }
+          }
+
+          // Geo — deleta e recria por dia
+          if (body.geo?.length) {
+            await tx.adGeoMetric.deleteMany({
+              where: { tenantId: tenant.id, storeId: store.id, platform: "meta", date },
+            });
+            await tx.adGeoMetric.createMany({
+              data: body.geo.map((g) => ({
+                tenantId: tenant.id,
+                storeId:  store.id,
+                platform: "meta",
+                date,
+                state:    g.state.toUpperCase().slice(0, 2),
+                spend:    g.spend  ?? 0,
+                clicks:   g.clicks ?? 0,
+                leads:    g.leads  ?? 0,
+              })),
+            });
+          }
+
+          // Atualiza lastSyncAt na config da loja
+          await tx.storeMetaConfig.updateMany({
+            where: { storeId: store.id },
+            data:  { lastSyncAt: new Date() },
+          });
+        });
+
+        return reply.code(201).send({ ok: true, date: body.date, storeId: store.id });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erro desconhecido";
+        req.log.error({ err }, "Falha no ingest meta-ads");
+        return reply.code(500).send({ error: message });
+      }
+    }
+  );
+
   // Health check do webhook
   app.get("/api/ingest/health", async (_req, reply) => {
     return reply.send({ ok: true, timestamp: new Date().toISOString() });

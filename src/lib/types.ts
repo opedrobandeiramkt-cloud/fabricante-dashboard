@@ -338,6 +338,25 @@ export interface TrafegoHistorico {
 
 export type TrafegoTab = "visao-geral" | "detalhamento" | "historico" | "leads";
 
+// ─── Meta Ads Config ──────────────────────────────────────────────────────────
+
+export interface StoreMetaConfig {
+  id:          string;
+  adAccountId: string;
+  pixelId:     string | null;
+  hasToken:    boolean;
+  syncEnabled: boolean;
+  lastSyncAt:  string | null;
+  updatedAt:   string;
+}
+
+export interface MetaTestResult {
+  ok:        boolean;
+  latencyMs: number;
+  accountName?: string;
+  error?:    string;
+}
+
 // ─── Rastracking WA + Meta ────────────────────────────────────────────────────
 
 export type RoasStatus = "verde" | "amarelo" | "vermelho" | "sem_dados";

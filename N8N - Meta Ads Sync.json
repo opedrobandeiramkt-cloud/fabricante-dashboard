@@ -1,0 +1,201 @@
+{
+  "name": "Meta Ads Sync — iGUi Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "n1",
+      "name": "Diário 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.IGUI_API_URL }}/api/stores/meta-configs/all",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WEBHOOK_SECRET }}" },
+            { "name": "x-tenant-slug", "value": "igui" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n2",
+      "name": "Buscar lojas com Meta config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gera lista de datas dos últimos 7 dias para sync incremental\nconst items = $input.all();\nconst lojas = Array.isArray(items[0].json) ? items[0].json : [];\n\nconst hoje = new Date();\nconst datas = [];\nfor (let i = 1; i <= 7; i++) {\n  const d = new Date(hoje);\n  d.setDate(d.getDate() - i);\n  datas.push(d.toISOString().slice(0, 10));\n}\n\nconst out = [];\nfor (const loja of lojas) {\n  if (!loja.accessToken) continue;\n  for (const date of datas) {\n    out.push({\n      json: { ...loja, date }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "n3",
+      "name": "Expandir lojas × datas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.adAccountId }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token",   "value": "={{ $json.accessToken }}" },
+            { "name": "time_range",     "value": "={\"since\":\"{{ $json.date }}\",\"until\":\"{{ $json.date }}\"}" },
+            { "name": "time_increment", "value": "1" },
+            { "name": "fields",         "value": "spend,impressions,clicks,actions,action_values" },
+            { "name": "level",          "value": "account" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n4",
+      "name": "Meta API — Métricas diárias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.adAccountId }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token",   "value": "={{ $json.accessToken }}" },
+            { "name": "time_range",     "value": "={\"since\":\"{{ $json.date }}\",\"until\":\"{{ $json.date }}\"}" },
+            { "name": "time_increment", "value": "1" },
+            { "name": "fields",         "value": "spend,impressions,clicks,actions" },
+            { "name": "breakdowns",     "value": "age,gender" },
+            { "name": "level",          "value": "account" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n5",
+      "name": "Meta API — Demographics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 340]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.adAccountId }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token",   "value": "={{ $json.accessToken }}" },
+            { "name": "time_range",     "value": "={\"since\":\"{{ $json.date }}\",\"until\":\"{{ $json.date }}\"}" },
+            { "name": "time_increment", "value": "1" },
+            { "name": "fields",         "value": "spend,impressions,clicks,actions" },
+            { "name": "breakdowns",     "value": "region" },
+            { "name": "level",          "value": "account" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n6",
+      "name": "Meta API — Geo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 480]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.adAccountId }}/ads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $json.accessToken }}" },
+            { "name": "fields",       "value": "id,name,creative{id,name},insights.time_range({\"since\":\"{{ $json.date }}\",\"until\":\"{{ $json.date }}\"}){spend,ctr,actions}" },
+            { "name": "limit",        "value": "10" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n7",
+      "name": "Meta API — Top Ads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 620]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapeia os 4 responses para o payload do /api/ingest/meta-ads\nconst metricasRaw   = $('Meta API — Métricas diárias').first().json;\nconst demosRaw      = $('Meta API — Demographics').first().json;\nconst geoRaw        = $('Meta API — Geo').first().json;\nconst adsRaw        = $('Meta API — Top Ads').first().json;\nconst ctx           = $('Expandir lojas × datas').first().json;\n\nfunction sumActions(actions, type) {\n  if (!Array.isArray(actions)) return 0;\n  const found = actions.find(a => a.action_type === type);\n  return found ? parseInt(found.value, 10) : 0;\n}\n\nconst metricsData   = metricasRaw?.data?.[0];\nconst metrics = metricsData ? {\n  spend:       parseFloat(metricsData.spend || '0'),\n  impressions: parseInt(metricsData.impressions || '0', 10),\n  clicks:      parseInt(metricsData.clicks || '0', 10),\n  leads:       sumActions(metricsData.actions, 'lead') +\n               sumActions(metricsData.actions, 'onsite_conversion.messaging_conversation_started_7d'),\n  messages:    sumActions(metricsData.actions, 'onsite_conversion.messaging_conversation_started_7d'),\n} : undefined;\n\nconst demographics = (demosRaw?.data || []).map(d => ({\n  dimension:   d.age ? 'age' : d.gender ? 'gender' : 'other',\n  bucket:      d.age || d.gender || 'unknown',\n  spend:       parseFloat(d.spend || '0'),\n  clicks:      parseInt(d.clicks || '0', 10),\n  impressions: parseInt(d.impressions || '0', 10),\n  leads:       sumActions(d.actions, 'lead'),\n}));\n\nconst geo = (geoRaw?.data || []).map(g => ({\n  state:  (g.region || '').slice(0, 2).toUpperCase(),\n  spend:  parseFloat(g.spend || '0'),\n  clicks: parseInt(g.clicks || '0', 10),\n  leads:  sumActions(g.actions, 'lead'),\n})).filter(g => g.state.length === 2);\n\nconst creatives = (adsRaw?.data || []).map(ad => {\n  const ins = ad.insights?.data?.[0];\n  if (!ins) return null;\n  return {\n    external_id:  ad.id,\n    name:         ad.name,\n    type:         'image',\n    spend:        parseFloat(ins.spend || '0'),\n    ctr:          parseFloat(ins.ctr || '0'),\n    leads:        sumActions(ins.actions, 'lead'),\n    messages:     sumActions(ins.actions, 'onsite_conversion.messaging_conversation_started_7d'),\n    period_start: ctx.date,\n    period_end:   ctx.date,\n  };\n}).filter(Boolean);\n\nreturn [{\n  json: {\n    tenant_slug:       ctx.tenantSlug,\n    store_external_id: ctx.storeExternalId,\n    date:              ctx.date,\n    accessToken:       ctx.accessToken,\n    metrics,\n    demographics,\n    geo,\n    creatives,\n  }\n}];"
+      },
+      "id": "n8",
+      "name": "Mapear payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.IGUI_API_URL }}/api/ingest/meta-ads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization",  "value": "=Bearer {{ $env.WEBHOOK_SECRET }}" },
+            { "name": "Content-Type",   "value": "application/json" },
+            { "name": "x-tenant-slug",  "value": "igui" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tenant_slug: $json.tenant_slug, store_external_id: $json.store_external_id, date: $json.date, metrics: $json.metrics, demographics: $json.demographics, geo: $json.geo, creatives: $json.creatives }) }}",
+        "options": {}
+      },
+      "id": "n9",
+      "name": "POST /api/ingest/meta-ads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "amount": 500,
+        "unit": "milliseconds"
+      },
+      "id": "n10",
+      "name": "Aguardar 500ms",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1560, 400]
+    }
+  ],
+  "connections": {
+    "Diário 06:00":                  { "main": [[{ "node": "Buscar lojas com Meta config", "type": "main", "index": 0 }]] },
+    "Buscar lojas com Meta config":  { "main": [[{ "node": "Expandir lojas × datas",       "type": "main", "index": 0 }]] },
+    "Expandir lojas × datas":        { "main": [[
+      { "node": "Meta API — Métricas diárias", "type": "main", "index": 0 },
+      { "node": "Meta API — Demographics",     "type": "main", "index": 0 },
+      { "node": "Meta API — Geo",              "type": "main", "index": 0 },
+      { "node": "Meta API — Top Ads",          "type": "main", "index": 0 }
+    ]] },
+    "Meta API — Métricas diárias":   { "main": [[{ "node": "Mapear payload", "type": "main", "index": 0 }]] },
+    "Meta API — Demographics":       { "main": [[{ "node": "Mapear payload", "type": "main", "index": 1 }]] },
+    "Meta API — Geo":                { "main": [[{ "node": "Mapear payload", "type": "main", "index": 2 }]] },
+    "Meta API — Top Ads":            { "main": [[{ "node": "Mapear payload", "type": "main", "index": 3 }]] },
+    "Mapear payload":                { "main": [[{ "node": "POST /api/ingest/meta-ads",    "type": "main", "index": 0 }]] },
+    "POST /api/ingest/meta-ads":     { "main": [[{ "node": "Aguardar 500ms",               "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "description": "Sync diário da Meta Marketing API para o iGUi Dashboard. Busca métricas, demographics e geo por loja e ingesta via /api/ingest/meta-ads. Variáveis de ambiente necessárias: IGUI_API_URL, WEBHOOK_SECRET."
+  }
+}

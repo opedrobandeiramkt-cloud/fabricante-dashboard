@@ -4,8 +4,10 @@ import type {
   GoalData,
   KPIData,
   LeadsPage,
+  MetaTestResult,
   Period,
   StageTimeData,
+  StoreMetaConfig,
   StoreRankingRow,
   StoreCrmConfig,
   TrendPoint,
@@ -158,6 +160,21 @@ export const api = {
 
   testCrmConfig(storeId: string): Promise<CrmTestResult> {
     return apiFetch(`/api/stores/${storeId}/crm-config/test`, { method: "POST" });
+  },
+
+  getMetaConfig(storeId: string): Promise<StoreMetaConfig> {
+    return apiFetch(`/api/stores/${storeId}/meta-config`);
+  },
+
+  saveMetaConfig(storeId: string, data: { adAccountId: string; accessToken?: string; pixelId?: string; syncEnabled?: boolean }): Promise<StoreMetaConfig> {
+    return apiFetch(`/api/stores/${storeId}/meta-config`, {
+      method: "PUT",
+      body:   JSON.stringify(data),
+    });
+  },
+
+  testMetaConfig(storeId: string): Promise<MetaTestResult> {
+    return apiFetch(`/api/stores/${storeId}/meta-config/test`, { method: "POST" });
   },
 
   // ── Orçamentos ───────────────────────────────────────────────────────────────
