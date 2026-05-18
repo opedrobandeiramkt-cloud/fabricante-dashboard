@@ -3,6 +3,7 @@ import { useTrafego } from "@/hooks/useTrafego";
 import { MacroFunnel } from "./MacroFunnel";
 import { IndicadoresMacroPanel } from "./IndicadoresMacroPanel";
 import { VisaoGeralTrafego } from "./VisaoGeralTrafego";
+import { RastrackingPanel } from "./RastrackingPanel";
 
 interface Props {
   filters: DashboardFilters;
@@ -57,6 +58,9 @@ export function VisaoGeralTab({ filters }: Props) {
         google={overview.google}
         meta={overview.meta}
       />
+
+      {/* Rastracking WA + Meta — ROAS, Connect Rate, Origem, CAPI */}
+      <RastrackingPanel filters={filters} />
     </div>
   );
 }

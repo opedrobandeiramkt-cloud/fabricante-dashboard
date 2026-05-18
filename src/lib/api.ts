@@ -12,6 +12,7 @@ import type {
   TrafegoOverview,
   TrafegoDetalhamento,
   TrafegoHistorico,
+  RastrackingOverview,
 } from "./types";
 import type { AppUser } from "./auth-types";
 import type { SavedQuote } from "./pool-data";
@@ -203,5 +204,10 @@ export const api = {
     const params = new URLSearchParams({ year: String(year) });
     if (storeIds.length > 0) params.set("storeIds", storeIds.join(","));
     return apiFetch(`/api/trafego/historico?${params}`);
+  },
+
+  rastracking(storeIds: string[], period: Period, dateFrom?: string, dateTo?: string): Promise<RastrackingOverview> {
+    const params = buildParams(storeIds, period, undefined, dateFrom, dateTo);
+    return apiFetch(`/api/trafego/rastracking?${params}`);
   },
 };

@@ -704,6 +704,110 @@ export async function trafegoRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // ── GET /api/trafego/rastracking ─────────────────────────────────────────────
+  // Métricas específicas de rastreamento WA+Meta: ROAS, Connect Rate, CPL WA,
+  // origem dos leads e estado do CAPI (integração rastracking pendente → null).
+
+  app.get<{ Querystring: TrafegoQuery }>("/api/trafego/rastracking", async (request, reply) => {
+    const tenant = (request as unknown as Record<string, unknown>).tenant as { id: string };
+    const query  = request.query;
+
+    const requestedIds = parseStoreIds(query.storeIds);
+    const { role, storeIds: allowedIds } = request.jwtUser!;
+    const filteredIds = role === "admin"
+      ? requestedIds
+      : requestedIds.filter((id) => allowedIds.includes(id));
+    const storeIds  = await resolveEffectiveStoreIds(tenant.id, filteredIds);
+    const { start, end } = resolvePeriodDates(query);
+    const storeFilter    = buildStoreFilter(storeIds);
+
+    // Métricas Meta do período
+    const metaAds = await prisma.adMetricDaily.findMany({
+      where: { tenantId: tenant.id, ...storeFilter, platform: "meta", date: { gte: start, lte: end } },
+      select: { spend: true, clicks: true, messages: true },
+    });
+
+    const metaSpend  = metaAds.reduce((s, r) => s + r.spend,    0);
+    const metaClicks = metaAds.reduce((s, r) => s + r.clicks,   0);
+    const mensagens  = metaAds.reduce((s, r) => s + r.messages, 0);
+
+    // Faturamento CRM no período (receita das vendas fechadas)
+    const revenueLeads = await prisma.lead.findMany({
+      where: {
+        tenantId: tenant.id,
+        ...storeFilter,
+        revenueAt: { gte: start, lte: end },
+        revenue:   { not: null },
+      },
+      select: { revenue: true },
+    });
+    const faturamento = revenueLeads.reduce((s, l) => s + (l.revenue ?? 0), 0);
+
+    // ROAS = faturamento / investimento Meta
+    const roas = metaSpend > 0
+      ? parseFloat((faturamento / metaSpend).toFixed(2))
+      : null;
+
+    const ROAS_META = 3.0;
+    let roasStatus: "verde" | "amarelo" | "vermelho" | "sem_dados" = "sem_dados";
+    if (roas !== null) {
+      if (roas >= ROAS_META)  roasStatus = "verde";
+      else if (roas >= 1.0)   roasStatus = "amarelo";
+      else                    roasStatus = "vermelho";
+    }
+
+    // Connect Rate = (mensagens WA / cliques Meta) × 100
+    const connectRate = metaClicks > 0
+      ? parseFloat(((mensagens / metaClicks) * 100).toFixed(1))
+      : null;
+
+    // CPL WA = investido Meta / mensagens WA
+    const cplWa = mensagens > 0
+      ? parseFloat((metaSpend / mensagens).toFixed(2))
+      : null;
+
+    // Leads por origem (CRM)
+    const crmLeads = await prisma.lead.findMany({
+      where: { tenantId: tenant.id, ...storeFilter, enteredAt: { gte: start, lte: end } },
+      select: { utmSource: true, utmMedium: true, origemManual: true },
+    });
+
+    const PAID_ORIGINS    = new Set(["meta", "google", "instagram"]);
+    const ORGANIC_ORIGINS = new Set(["organico", "indicacao", "evento"]);
+
+    let pago = 0, organico = 0, direto = 0;
+
+    for (const lead of crmLeads) {
+      const manual = lead.origemManual ?? null;
+      const src    = (lead.utmSource ?? "").toLowerCase();
+      const med    = (lead.utmMedium  ?? "").toLowerCase();
+
+      if (manual && PAID_ORIGINS.has(manual)) {
+        pago++;
+      } else if (manual && ORGANIC_ORIGINS.has(manual)) {
+        organico++;
+      } else if (!manual && !src && !med) {
+        direto++;
+      } else {
+        const derived = deriveOrigem(lead.utmSource, lead.utmMedium);
+        if (PAID_ORIGINS.has(derived)) pago++;
+        else if (derived === "organico") organico++;
+        else direto++;
+      }
+    }
+
+    return reply.send({
+      roas,
+      roasStatus,
+      connectRate,
+      cplWa,
+      leadsPorOrigem: { pago, organico, direto, total: crmLeads.length },
+      // Integração com rastracking backend pendente — retorna null até configurar
+      capiSuccessRate: null,
+      ctwaClicRate:    null,
+    });
+  });
+
   // ── GET /api/trafego/goals/:storeId ──────────────────────────────────────────
 
   app.get<{ Params: GoalParams }>("/api/trafego/goals/:storeId", async (request, reply) => {

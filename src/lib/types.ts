@@ -337,3 +337,22 @@ export interface TrafegoHistorico {
 }
 
 export type TrafegoTab = "visao-geral" | "detalhamento" | "historico" | "leads";
+
+// ─── Rastracking WA + Meta ────────────────────────────────────────────────────
+
+export type RoasStatus = "verde" | "amarelo" | "vermelho" | "sem_dados";
+
+export interface RastrackingOverview {
+  roas:            number | null;
+  roasStatus:      RoasStatus;
+  connectRate:     number | null; // (mensagens WA / cliques Meta) × 100
+  cplWa:           number | null; // investido Meta / mensagens WA
+  leadsPorOrigem: {
+    pago:     number;
+    organico: number;
+    direto:   number;
+    total:    number;
+  };
+  capiSuccessRate: number | null; // % vendas com CAPI enviado (null = não integrado)
+  ctwaClicRate:    number | null; // % leads pagos com ctwa_clid capturado
+}

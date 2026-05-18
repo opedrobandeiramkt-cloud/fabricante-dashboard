@@ -8,6 +8,8 @@ import type {
   AdCreativeRow,
   GeoMetricRow,
   DashboardFilters,
+  RastrackingOverview,
+  RoasStatus,
 } from "./types";
 
 function seed(filters: DashboardFilters, offset = 0): number {
@@ -278,6 +280,41 @@ export function getMockTrafegoDetalhamento(filters: DashboardFilters): TrafegoDe
         { platform: "Stories", leads: Math.round(metaLeads * 0.07) },
       ],
     },
+  };
+}
+
+export function getMockRastracking(filters: DashboardFilters): RastrackingOverview {
+  const s = (o: number) => seed(filters, o + 700);
+
+  const metaSpend  = lerp(4_000, 14_000, s(1));
+  const faturamento = lerp(12_000, 55_000, s(2));
+  const roas = parseFloat((faturamento / metaSpend).toFixed(2));
+
+  let roasStatus: RoasStatus;
+  if (roas >= 3.0)  roasStatus = "verde";
+  else if (roas >= 1.0) roasStatus = "amarelo";
+  else roasStatus = "vermelho";
+
+  const metaClicks = lerp(800, 4_000, s(3));
+  const mensagens  = lerp(200, 1_500, s(4));
+  const connectRate = parseFloat(((mensagens / metaClicks) * 100).toFixed(1));
+  const cplWa = parseFloat((metaSpend / Math.max(mensagens, 1)).toFixed(2));
+
+  const total    = lerp(80, 250, s(5));
+  const pagoFrac = lerpF(0.55, 0.75, s(6));
+  const orgFrac  = lerpF(0.15, 0.30, s(7));
+  const pago     = Math.round(total * pagoFrac);
+  const organico = Math.round(total * orgFrac);
+  const direto   = Math.max(0, total - pago - organico);
+
+  return {
+    roas,
+    roasStatus,
+    connectRate,
+    cplWa,
+    leadsPorOrigem: { pago, organico, direto, total },
+    capiSuccessRate: parseFloat((lerpF(0.75, 0.98, s(8)) * 100).toFixed(1)),
+    ctwaClicRate:    parseFloat((lerpF(0.55, 0.85, s(9)) * 100).toFixed(1)),
   };
 }
 
