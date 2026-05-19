@@ -43,13 +43,22 @@ const querySchema = {
   type: "object",
   properties: {
     period:      { type: "string", enum: ["7d", "30d", "90d", "12m"], default: "30d" },
-    storeIds:    { type: "string" }, // CSV: "id1,id2"
-    salesperson: { type: "string" }, // crmUserId do vendedor
-    page:        { type: "string" }, // página (1-indexed), usado pelo endpoint /leads
+    storeIds:    { type: "string" },
+    salesperson: { type: "string" },
+    page:        { type: "string" },
+    from:        { type: "string" }, // "YYYY-MM-DD" — data customizada (início)
+    to:          { type: "string" }, // "YYYY-MM-DD" — data customizada (fim)
   },
 } as const;
 
-type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string; page?: string };
+type DashboardQuery = { period?: Period; storeIds?: string; salesperson?: string; page?: string; from?: string; to?: string };
+
+function resolveDates(query: DashboardQuery): { start: Date; end: Date } {
+  if (query.from && query.to) {
+    return { start: new Date(query.from), end: new Date(query.to) };
+  }
+  return getPeriodRange((query.period ?? "30d") as Period);
+}
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
 
@@ -287,7 +296,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         request.query.storeIds?.split(",").filter(Boolean) ?? [],
       );
 
-      const { start, end } = getPeriodRange(period);
+      const { start, end } = resolveDates(request.query);
 
       const wonStages = await prisma.funnelStage.findMany({
         where: { tenantId: tenant.id, isWon: true },
@@ -435,7 +444,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         request.query.storeIds?.split(",").filter(Boolean) ?? [],
       );
 
-      const { start, end } = getPeriodRange(period);
+      const { start, end } = resolveDates(request.query);
 
       const stages = await prisma.funnelStage.findMany({
         where:   { tenantId: tenant.id },
