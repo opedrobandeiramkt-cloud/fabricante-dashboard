@@ -381,7 +381,7 @@ export async function trafegoRoutes(app: FastifyInstance): Promise<void> {
       }),
       prisma.adCreative.findMany({
         where:   { tenantId: tenant.id, ...storeFilter, periodStart: { gte: start } },
-        select:  { name: true, type: true, subPlatform: true, leads: true, messages: true, spend: true },
+        select:  { externalId: true, name: true, type: true, subPlatform: true, leads: true, messages: true, spend: true, thumbnailUrl: true },
         orderBy: { leads: "desc" },
         take:    20,
       }),
@@ -474,6 +474,7 @@ export async function trafegoRoutes(app: FastifyInstance): Promise<void> {
 
     // Top ads Meta
     const topAds = creatives.map((c) => ({
+      externalId:  c.externalId,
       name:        c.name,
       type:        c.type,
       subPlatform: c.subPlatform ?? "",
@@ -481,6 +482,7 @@ export async function trafegoRoutes(app: FastifyInstance): Promise<void> {
       messages:    c.messages,
       spend:       Math.round(c.spend * 100) / 100,
       cpl:         c.leads > 0 ? Math.round(c.spend / c.leads * 100) / 100 : 0,
+      thumbnailUrl: c.thumbnailUrl ?? null,
     }));
 
     // Leads por sub-plataforma Meta (via criativos)

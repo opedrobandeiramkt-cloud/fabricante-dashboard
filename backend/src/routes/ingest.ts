@@ -312,16 +312,17 @@ export async function ingestRoutes(app: FastifyInstance) {
           impressions?: number;
         }>;
         creatives?: Array<{
-          external_id:  string;
-          name:         string;
-          type?:        string;
+          external_id:   string;
+          name:          string;
+          type?:         string;
           sub_platform?: string;
-          spend?:       number;
-          leads?:       number;
-          messages?:    number;
-          ctr?:         number;
-          period_start: string;
-          period_end:   string;
+          spend?:        number;
+          leads?:        number;
+          messages?:     number;
+          ctr?:          number;
+          thumbnail_url?: string;
+          period_start:  string;
+          period_end:    string;
         }>;
         geo?: Array<{
           state:   string;
@@ -405,18 +406,19 @@ export async function ingestRoutes(app: FastifyInstance) {
               });
               await tx.adCreative.create({
                 data: {
-                  tenantId:    tenant.id,
-                  storeId:     store.id,
-                  externalId:  c.external_id,
-                  name:        c.name,
-                  type:        c.type        ?? "image",
-                  subPlatform: c.sub_platform ?? null,
-                  spend:       c.spend       ?? 0,
-                  leads:       c.leads       ?? 0,
-                  messages:    c.messages    ?? 0,
-                  ctr:         c.ctr         ?? 0,
-                  periodStart: pStart,
-                  periodEnd:   pEnd,
+                  tenantId:     tenant.id,
+                  storeId:      store.id,
+                  externalId:   c.external_id,
+                  name:         c.name,
+                  type:         c.type          ?? "image",
+                  subPlatform:  c.sub_platform  ?? null,
+                  spend:        c.spend         ?? 0,
+                  leads:        c.leads         ?? 0,
+                  messages:     c.messages      ?? 0,
+                  ctr:          c.ctr           ?? 0,
+                  thumbnailUrl: c.thumbnail_url ?? null,
+                  periodStart:  pStart,
+                  periodEnd:    pEnd,
                 },
               });
             }

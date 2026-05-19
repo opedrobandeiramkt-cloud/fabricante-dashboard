@@ -278,6 +278,8 @@ export interface AdCreativeRow {
   messages: number;
   spend: number;
   cpl: number;
+  externalId?: string;
+  thumbnailUrl?: string;
 }
 
 export interface GeoMetricRow {

@@ -1,4 +1,4 @@
-import { Megaphone } from "lucide-react";
+import { Megaphone, ExternalLink } from "lucide-react";
 import type { AdCreativeRow } from "@/lib/types";
 import { fmtBRL, fmtNum } from "./fmt";
 
@@ -11,6 +11,24 @@ const RANK_STYLES = [
   "text-slate-400 font-bold",
   "text-amber-700 font-bold",
 ];
+
+function AdThumbnail({ url, name }: { url?: string; name: string }) {
+  if (!url) {
+    return (
+      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+        <Megaphone className="h-4 w-4 text-muted-foreground opacity-40" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={name}
+      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-border"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+    />
+  );
+}
 
 export function TopAdsTable({ ads }: Props) {
   const sorted = [...ads].sort((a, b) => b.leads - a.leads);
@@ -42,6 +60,10 @@ export function TopAdsTable({ ads }: Props) {
         <tbody>
           {sorted.map((ad, i) => {
             const pct = maxLeads > 0 ? (ad.leads / maxLeads) * 100 : 0;
+            const adLibraryUrl = ad.externalId
+              ? `https://www.facebook.com/ads/library/?id=${ad.externalId}`
+              : null;
+
             return (
               <tr
                 key={`${ad.name}-${i}`}
@@ -53,12 +75,30 @@ export function TopAdsTable({ ads }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3 max-w-0 w-full">
-                  <p className="font-medium text-foreground truncate" title={ad.name}>{ad.name}</p>
-                  <div className="mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, background: "#1877F2" }}
-                    />
+                  <div className="flex items-center gap-3">
+                    <AdThumbnail url={ad.thumbnailUrl} name={ad.name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground truncate" title={ad.name}>{ad.name}</p>
+                        {adLibraryUrl && (
+                          <a
+                            href={adLibraryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Ver anúncio na biblioteca do Meta"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, background: "#1877F2" }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right">

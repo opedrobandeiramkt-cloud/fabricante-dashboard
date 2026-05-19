@@ -359,9 +359,10 @@ model AdCreative {
   leads       Int      @default(0)
   messages    Int      @default(0)
   spend       Float    @default(0)
-  ctr         Float    @default(0)
-  periodStart DateTime @map("period_start") @db.Date
-  periodEnd   DateTime @map("period_end")   @db.Date
+  ctr          Float    @default(0)
+  thumbnailUrl String?  @map("thumbnail_url")
+  periodStart  DateTime @map("period_start") @db.Date
+  periodEnd    DateTime @map("period_end")   @db.Date
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   store  Store  @relation(fields: [storeId],  references: [id])
