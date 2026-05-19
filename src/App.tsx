@@ -148,7 +148,7 @@ function AuthenticatedApp() {
       {/* ─── Sidebar ─────────────────────────────────────────────────── */}
       <>
         {/* Desktop sidebar */}
-        <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col border-r border-border bg-card/30 backdrop-blur-xl">
+        <aside className="hidden md:flex w-[220px] flex-shrink-0 flex-col border-r border-border bg-card/30 backdrop-blur-xl z-40">
           <SidebarContents
             page={page}
             onPageChange={handlePageChange}
@@ -406,7 +406,7 @@ function SidebarContents({
       </nav>
 
       {/* User section */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border relative">
         <button
           onClick={() => setUserMenuOpen((v) => !v)}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-secondary/70 transition-colors text-left"
@@ -424,7 +424,7 @@ function SidebarContents({
         </button>
 
         {userMenuOpen && (
-          <div className="mt-1 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+          <div className="absolute bottom-full left-3 right-3 mb-1 rounded-xl border border-border bg-card shadow-xl overflow-hidden z-50">
             <div className="px-3 py-2.5 border-b border-border">
               <p className="text-xs font-semibold text-foreground">{user?.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
