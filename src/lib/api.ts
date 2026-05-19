@@ -177,6 +177,17 @@ export const api = {
     return apiFetch(`/api/stores/${storeId}/meta-config/test`, { method: "POST" });
   },
 
+  getZapiConfig(storeId: string): Promise<import("./types").StoreZapiConfig> {
+    return apiFetch(`/api/stores/${storeId}/zapi-config`);
+  },
+
+  saveZapiConfig(storeId: string, data: { instanceId: string; clientToken: string; securityToken?: string; whatsappNumber: string; syncEnabled?: boolean }): Promise<import("./types").StoreZapiConfig> {
+    return apiFetch(`/api/stores/${storeId}/zapi-config`, {
+      method: "PUT",
+      body:   JSON.stringify(data),
+    });
+  },
+
   // ── Orçamentos ───────────────────────────────────────────────────────────────
 
   listQuotes(): Promise<SavedQuote[]> {

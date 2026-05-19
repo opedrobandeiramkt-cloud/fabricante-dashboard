@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   BarChart3, Store, LogOut, ChevronDown, ShieldCheck, Users,
-  Download, Menu, Zap,
+  Download, Menu, Zap, Puzzle,
 } from "lucide-react";
 import logoSvg from "@/assets/logo.svg";
 
@@ -17,6 +17,7 @@ import { DateRangePicker }     from "@/components/dashboard/DateRangePicker";
 import { StoresPage }          from "@/components/stores/StoresPage";
 import { UsersPage }           from "@/components/users/UsersPage";
 import { TrackeamentoPage }    from "@/components/trackeamento/TrackeamentoPage";
+import { IntegracoesPage }     from "@/components/integracoes/IntegracoesPage";
 import { LoginPage }           from "@/components/auth/LoginPage";
 import { ResetPasswordPage }   from "@/components/auth/ResetPasswordPage";
 import { useAuth }        from "@/contexts/AuthContext";
@@ -26,7 +27,7 @@ import { useUsersContext } from "@/contexts/UsersContext";
 import { exportDashboardPDF } from "@/lib/export-pdf";
 import type { Period }    from "@/lib/types";
 
-type Page = "dashboard" | "stores" | "users" | "trackeamento";
+type Page = "dashboard" | "stores" | "users" | "trackeamento" | "integracoes";
 
 export default function App() {
   const { isAuthenticated } = useAuth();
@@ -133,7 +134,8 @@ function AuthenticatedApp() {
   const pageTitle =
     page === "dashboard"    ? "Dashboard"    :
     page === "stores"       ? "Lojas"        :
-    page === "trackeamento" ? "Trackeamento" : "Usuários";
+    page === "trackeamento" ? "Trackeamento" :
+    page === "integracoes"  ? "Integrações"  : "Usuários";
 
   const roleLabel =
     isAdmin       ? "Administrador"   :
@@ -312,6 +314,8 @@ function AuthenticatedApp() {
               <StoresPage readOnly={!isAdmin} />
             ) : page === "trackeamento" ? (
               <TrackeamentoPage filters={filters} />
+            ) : page === "integracoes" ? (
+              <IntegracoesPage />
             ) : (
               <UsersPage />
             )}
@@ -402,6 +406,14 @@ function SidebarContents({
               badge="em breve"
             />
           )
+        )}
+        {isAdmin && (
+          <SidebarNavItem
+            active={page === "integracoes"}
+            onClick={() => onPageChange("integracoes")}
+            icon={<Puzzle className="h-4 w-4" />}
+            label="Integrações"
+          />
         )}
       </nav>
 

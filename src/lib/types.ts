@@ -348,8 +348,17 @@ export interface StoreMetaConfig {
   pixelId:     string | null;
   hasToken:    boolean;
   syncEnabled: boolean;
+  capiEnabled: boolean;
   lastSyncAt:  string | null;
   updatedAt:   string;
+}
+
+export interface StoreZapiConfig {
+  id:             string;
+  instanceId:     string;
+  whatsappNumber: string;
+  syncEnabled:    boolean;
+  updatedAt:      string;
 }
 
 export interface MetaTestResult {

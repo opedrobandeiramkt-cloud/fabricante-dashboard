@@ -34,6 +34,7 @@ export async function metaConfigRoutes(app: FastifyInstance) {
         pixelId:     config.pixelId,
         hasToken:    true,
         syncEnabled: config.syncEnabled,
+        capiEnabled: config.capiEnabled,
         lastSyncAt:  config.lastSyncAt?.toISOString() ?? null,
         updatedAt:   config.updatedAt.toISOString(),
       });
@@ -52,6 +53,7 @@ export async function metaConfigRoutes(app: FastifyInstance) {
         accessToken?: string;
         pixelId?:     string;
         syncEnabled?: boolean;
+        capiEnabled?: boolean;
       };
 
       if (!body.adAccountId) return reply.code(400).send({ error: "adAccountId é obrigatório." });
@@ -82,12 +84,14 @@ export async function metaConfigRoutes(app: FastifyInstance) {
           adAccountId: body.adAccountId,
           pixelId:     body.pixelId ?? null,
           syncEnabled: body.syncEnabled ?? true,
+          capiEnabled: body.capiEnabled ?? false,
           ...tokenFields,
         },
         update: {
           adAccountId: body.adAccountId,
           pixelId:     body.pixelId !== undefined ? (body.pixelId || null) : existing?.pixelId ?? null,
           syncEnabled: body.syncEnabled ?? existing?.syncEnabled ?? true,
+          capiEnabled: body.capiEnabled ?? existing?.capiEnabled ?? false,
           ...tokenFields,
         },
       });
@@ -98,6 +102,7 @@ export async function metaConfigRoutes(app: FastifyInstance) {
         pixelId:     config.pixelId,
         hasToken:    true,
         syncEnabled: config.syncEnabled,
+        capiEnabled: config.capiEnabled,
         updatedAt:   config.updatedAt.toISOString(),
       });
     }
