@@ -152,14 +152,9 @@ export function DetalhamentoTab({ filters }: Props) {
           <SectionCard title="Melhores Anúncios">
             <TopAdsTable ads={data.topAds ?? []} />
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <SectionCard title="Leads por Plataforma">
-              <LeadsByMetaPlatform data={data.leadsBySubPlatform ?? []} />
-            </SectionCard>
-            <SectionCard title="Leads por Estado">
-              <BrazilGeoMap data={data.geo ?? []} />
-            </SectionCard>
-          </div>
+          <SectionCard title="Leads por Plataforma">
+            <LeadsByMetaPlatform data={data.leadsBySubPlatform ?? []} />
+          </SectionCard>
         </>
       )}
     </div>
