@@ -16,7 +16,7 @@ const AGE_COLORS    = ["#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#
 const GENDER_COLORS = ["#3b82f6", "#ec4899"];
 const DEVICE_COLORS = ["#6366f1", "#06b6d4", "#84cc16"];
 
-const CHART_H = 150;
+const CHART_H = 180;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
