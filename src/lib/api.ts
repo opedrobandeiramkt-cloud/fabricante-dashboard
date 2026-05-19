@@ -166,7 +166,7 @@ export const api = {
     return apiFetch(`/api/stores/${storeId}/meta-config`);
   },
 
-  saveMetaConfig(storeId: string, data: { adAccountId: string; accessToken?: string; pixelId?: string; syncEnabled?: boolean }): Promise<StoreMetaConfig> {
+  saveMetaConfig(storeId: string, data: { adAccountId: string; accessToken?: string; pixelId?: string; syncEnabled?: boolean; capiEnabled?: boolean }): Promise<StoreMetaConfig> {
     return apiFetch(`/api/stores/${storeId}/meta-config`, {
       method: "PUT",
       body:   JSON.stringify(data),

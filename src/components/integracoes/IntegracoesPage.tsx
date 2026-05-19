@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   BarChart2, MessageCircle, Webhook, Loader2, CheckCircle2, XCircle,
   ChevronDown, ChevronUp, Copy, Check, Info, Wifi, ExternalLink,
