@@ -13,6 +13,8 @@ import { crmConfigRoutes } from "./routes/crm-config.js";
 import { quoteRoutes } from "./routes/quotes.js";
 import { trafegoRoutes } from "./routes/trafego.js";
 import { metaConfigRoutes } from "./routes/meta-config.js";
+import { ingestWhatsappRoutes } from "./routes/ingest-whatsapp.js";
+import { storeZapiRoutes } from "./routes/store-zapi.js";
 
 const port = Number(process.env.PORT ?? 3333);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -67,6 +69,8 @@ try {
   await app.register(quoteRoutes);
   await app.register(trafegoRoutes);
   await app.register(metaConfigRoutes);
+  await app.register(ingestWhatsappRoutes);
+  await app.register(storeZapiRoutes);
 
   app.get("/health", async () => ({ ok: true, uptime: process.uptime() }));
 

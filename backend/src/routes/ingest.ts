@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
 import { buildIdempotencyKey } from "../lib/crypto.js";
+import { normalizeE164, hashPhone } from "../lib/phone.js";
+import { sendPurchaseCapi, eventTimeNow } from "../lib/meta-capi.js";
 
 // ─── Schema de validação do payload ──────────────────────────────────────────
 
@@ -258,10 +260,53 @@ export async function ingestRoutes(app: FastifyInstance) {
             });
           }
 
-          return { eventId: event.id, leadId: lead.id };
+          return {
+            eventId:         event.id,
+            leadId:          lead.id,
+            isWon:           toStage.isWon,
+            revenue:         toStage.isWon ? revenueValue : null,
+            revenueCurrency: revenueCurrency,
+            contactPhone:    lead.contactPhone,
+            phoneHash:       lead.phoneHash,
+            ctwaClid:        lead.ctwaClid,
+            tenantId:        tenant.id,
+            storeId:         store.id,
+          };
         });
 
-        return reply.code(201).send({ status: "created", ...result });
+        // Dispara Purchase CAPI de forma assíncrona quando venda é confirmada
+        if (result.isWon && result.contactPhone) {
+          setImmediate(async () => {
+            try {
+              const metaConfig = await prisma.storeMetaConfig.findUnique({
+                where:  { storeId: result.storeId },
+                select: { pixelId: true, capiEnabled: true, accessTokenEnc: true, accessTokenIv: true, accessTokenTag: true },
+              });
+              if (!metaConfig?.capiEnabled || !metaConfig.pixelId) return;
+
+              const ph = result.phoneHash ?? hashPhone(normalizeE164(result.contactPhone!));
+
+              await sendPurchaseCapi({
+                tenantId:        result.tenantId,
+                storeId:         result.storeId,
+                leadId:          result.leadId,
+                pixelId:         metaConfig.pixelId,
+                accessTokenEnc:  metaConfig.accessTokenEnc,
+                accessTokenIv:   metaConfig.accessTokenIv,
+                accessTokenTag:  metaConfig.accessTokenTag,
+                eventTime:       eventTimeNow(),
+                ctwaClid:        result.ctwaClid ?? undefined,
+                userData:        { ph },
+                value:           result.revenue ?? 0,
+                currency:        result.revenueCurrency ?? "BRL",
+              });
+            } catch {
+              // falha silenciosa — já registrada na tabela capi_events
+            }
+          });
+        }
+
+        return reply.code(201).send({ status: "created", eventId: result.eventId, leadId: result.leadId });
 
       } catch (err) {
         const message = err instanceof Error ? err.message : "Erro desconhecido";

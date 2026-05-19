@@ -27,6 +27,7 @@ model Tenant {
   adCreatives    AdCreative[]
   adGeoMetrics   AdGeoMetric[]
   trafficGoals   TrafficGoal[]
+  capiEvents     CapiEvent[]
 
   @@map("tenants")
 }
@@ -47,6 +48,8 @@ model Store {
   quotes     Quote[]
   crmConfigs StoreCrmConfig[]
   metaConfig StoreMetaConfig?
+  zapiConfig StoreZapiConfig?
+  capiEvents CapiEvent[]
   adMetrics      AdMetricDaily[]
   adDemographics AdDemographic[]
   adSearchTerms  AdSearchTerm[]
@@ -103,11 +106,21 @@ model Lead {
   utmMedium            String?   @map("utm_medium")
   utmCampaign          String?   @map("utm_campaign")
   utmContent           String?   @map("utm_content")
+  // ── WhatsApp Ads attribution ─────────────────────────────────────────────────
+  phoneHash        String?   @map("phone_hash")        // SHA-256 do telefone E.164 (dedup)
+  ctwaClid         String?   @map("ctwa_clid")         // click-to-WhatsApp click ID (Meta atribuição)
+  metaAdId         String?   @map("meta_ad_id")
+  metaAdsetId      String?   @map("meta_adset_id")
+  metaCampaignId   String?   @map("meta_campaign_id")
+  metaAdName       String?   @map("meta_ad_name")
+  metaAdsetName    String?   @map("meta_adset_name")
+  metaCampaignName String?   @map("meta_campaign_name")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   store        Store        @relation(fields: [storeId], references: [id])
   currentStage FunnelStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
   events       LeadEvent[]
+  capiEvents   CapiEvent[]
 
   @@unique([tenantId, externalId])
   @@index([tenantId, storeId])
@@ -115,6 +128,7 @@ model Lead {
   @@index([tenantId, salespersonCrmId])
   @@index([tenantId, revenueAt])
   @@index([tenantId, utmCampaign])
+  @@index([tenantId, phoneHash])
   @@map("leads")
 }
 
@@ -203,11 +217,12 @@ model StoreMetaConfig {
   id               String    @id @default(uuid())
   storeId          String    @unique @map("store_id")
   adAccountId      String    @map("ad_account_id")    // act_XXXXXXXXXX
-  pixelId          String?   @map("pixel_id")          // opcional — para CAPI futuro
+  pixelId          String?   @map("pixel_id")          // necessário para CAPI
   accessTokenEnc   String    @map("access_token_enc")  // AES-256-GCM ciphertext (hex)
   accessTokenIv    String    @map("access_token_iv")   // IV (hex, 12 bytes)
   accessTokenTag   String    @map("access_token_tag")  // Auth tag (hex, 16 bytes)
   syncEnabled      Boolean   @default(true) @map("sync_enabled")
+  capiEnabled      Boolean   @default(false) @map("capi_enabled") // habilita envio ao Meta CAPI
   lastSyncAt       DateTime? @map("last_sync_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -389,6 +404,48 @@ model AdGeoMetric {
   @@index([tenantId, storeId, platform, date(sort: Desc)])
   @@index([tenantId, platform, state])
   @@map("ad_geo_metrics")
+}
+
+// ─── Configuração Z-API por loja ─────────────────────────────────────────────
+model StoreZapiConfig {
+  id              String   @id @default(uuid())
+  storeId         String   @unique @map("store_id")
+  instanceId      String   @map("instance_id")
+  clientTokenEnc  String   @map("client_token_enc")  // AES-256-GCM ciphertext (hex)
+  clientTokenIv   String   @map("client_token_iv")   // IV (hex, 12 bytes)
+  clientTokenTag  String   @map("client_token_tag")  // Auth tag (hex, 16 bytes)
+  securityToken   String?  @map("security_token")    // token de segurança do webhook Z-API
+  whatsappNumber  String   @unique @map("whatsapp_number") // identifica a loja pelo número
+  syncEnabled     Boolean  @default(true) @map("sync_enabled")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@map("store_zapi_configs")
+}
+
+// ─── Eventos CAPI enviados ao Meta ───────────────────────────────────────────
+model CapiEvent {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  storeId     String   @map("store_id")
+  leadId      String?  @map("lead_id")
+  eventName   String   @map("event_name")   // "Lead" | "Purchase"
+  eventId     String   @unique @map("event_id") // SHA-256 para dedup
+  eventTime   BigInt   @map("event_time")   // Unix timestamp em segundos
+  payload     Json
+  statusCode  Int?     @map("status_code")
+  success     Boolean  @default(false)
+  errorMsg    String?  @map("error_msg")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId],  references: [id])
+  lead   Lead?  @relation(fields: [leadId],   references: [id])
+
+  @@index([tenantId, storeId, createdAt(sort: Desc)])
+  @@map("capi_events")
 }
 
 // ─── Metas anuais de tráfego por loja ────────────────────────────────────────
