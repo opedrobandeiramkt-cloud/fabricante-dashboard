@@ -307,31 +307,32 @@ export async function dashboardRoutes(app: FastifyInstance) {
       // Busca todos os eventos do período agrupando por data no SQL via raw
       const bucketSql = period === "12m" ? "month" : period === "90d" ? "week" : "day";
 
-      const bucket = Prisma.raw(bucketSql);
+      // DATE_TRUNC precisa de literal de string com aspas simples no SQL
+      const bucket = Prisma.raw(`'${bucketSql}'`);
 
       const rows = storeIds.length > 0
         ? await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
             SELECT
               DATE_TRUNC(${bucket}, occurred_at) AS bucket,
-              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
-              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
+              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                      AS leads,
+              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::text[])) AS vendas
             FROM lead_events
-            WHERE tenant_id  = ${tenant.id}::uuid
-              AND store_id   = ANY(${storeIds}::uuid[])
+            WHERE tenant_id  = ${tenant.id}
+              AND store_id   = ANY(${storeIds}::text[])
               AND occurred_at BETWEEN ${start} AND ${end}
-            GROUP BY bucket
-            ORDER BY bucket ASC
+            GROUP BY 1
+            ORDER BY 1 ASC
           `
         : await prisma.$queryRaw<Array<{ bucket: Date; leads: bigint; vendas: bigint }>>`
             SELECT
               DATE_TRUNC(${bucket}, occurred_at) AS bucket,
-              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                     AS leads,
-              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::uuid[])) AS vendas
+              COUNT(*) FILTER (WHERE from_stage_id IS NULL)                      AS leads,
+              COUNT(*) FILTER (WHERE to_stage_id = ANY(${wonStageIds}::text[])) AS vendas
             FROM lead_events
-            WHERE tenant_id  = ${tenant.id}::uuid
+            WHERE tenant_id  = ${tenant.id}
               AND occurred_at BETWEEN ${start} AND ${end}
-            GROUP BY bucket
-            ORDER BY bucket ASC
+            GROUP BY 1
+            ORDER BY 1 ASC
           `;
 
       const result = rows.map((row) => ({
@@ -466,12 +467,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
               occurred_at,
               LEAD(occurred_at) OVER (PARTITION BY lead_id ORDER BY occurred_at) AS next_at
             FROM lead_events
-            WHERE tenant_id = ${tenant.id}::uuid
-              AND store_id  = ANY(${storeIds}::uuid[])
+            WHERE tenant_id = ${tenant.id}
+              AND store_id  = ANY(${storeIds}::text[])
               AND occurred_at BETWEEN ${start} AND ${end}
           )
           SELECT
-            to_stage_id::text,
+            to_stage_id,
             AVG(EXTRACT(EPOCH FROM (next_at - occurred_at)) / 86400)::float AS avg_days
           FROM ordered
           WHERE next_at IS NOT NULL
@@ -486,11 +487,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
               occurred_at,
               LEAD(occurred_at) OVER (PARTITION BY lead_id ORDER BY occurred_at) AS next_at
             FROM lead_events
-            WHERE tenant_id = ${tenant.id}::uuid
+            WHERE tenant_id = ${tenant.id}
               AND occurred_at BETWEEN ${start} AND ${end}
           )
           SELECT
-            to_stage_id::text,
+            to_stage_id,
             AVG(EXTRACT(EPOCH FROM (next_at - occurred_at)) / 86400)::float AS avg_days
           FROM ordered
           WHERE next_at IS NOT NULL
