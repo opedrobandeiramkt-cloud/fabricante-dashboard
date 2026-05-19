@@ -89,7 +89,12 @@ export async function getContact(
 ): Promise<HelenaContact | null> {
   const res = await helenaFetch(`/core/v1/contact/${contactId}`, token);
   if (!res.ok) return null;
-  return res.json() as Promise<HelenaContact>;
+  const data = await res.json() as Record<string, unknown>;
+  // LOG TEMPORÁRIO: inspecionar campos de atribuição WhatsApp Ads
+  if (data?.utm || (data as Record<string, unknown>)?.source) {
+    console.log("[helena-contact-raw]", JSON.stringify(data, null, 2));
+  }
+  return data as unknown as HelenaContact;
 }
 
 export async function listAgents(token: string): Promise<HelenaAgent[]> {
